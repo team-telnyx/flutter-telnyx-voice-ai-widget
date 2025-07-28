@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'models/widget_theme.dart';
 import 'models/widget_state.dart';
 import 'models/agent_status.dart';
 import 'services/widget_service.dart';
 import 'widgets/audio_visualizer.dart';
-import 'widgets/conversation_view.dart';
+import 'widgets/conversation_overlay.dart';
 
 /// Main Telnyx Voice AI Widget
 class TelnyxVoiceAiWidget extends StatefulWidget {
-  /// Height of the widget
+  /// Height of the widget in collapsed state
   final double height;
   
-  /// Width of the widget
+  /// Width of the widget in collapsed state
   final double width;
+  
+  /// Height of the widget in expanded state
+  final double? expandedHeight;
+  
+  /// Width of the widget in expanded state
+  final double? expandedWidth;
   
   /// Assistant ID to connect to
   final String assistantId;
@@ -23,6 +29,8 @@ class TelnyxVoiceAiWidget extends StatefulWidget {
     required this.height,
     required this.width,
     required this.assistantId,
+    this.expandedHeight,
+    this.expandedWidth,
   });
 
   @override
@@ -67,18 +75,33 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
     return AnimatedBuilder(
       animation: _widgetService,
       builder: (context, child) {
+        // Handle conversation overlay creation
+        if (_widgetService.isConversationVisible && _widgetService.widgetState != AssistantWidgetState.conversation) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _widgetService.createConversationOverlay(context, () {
+              return ConversationOverlay(
+                transcript: _widgetService.transcript,
+                theme: _theme,
+                onClose: _widgetService.hideConversationOverlay,
+                onSendMessage: _widgetService.sendMessage,
+              );
+            });
+          });
+        }
+        
         switch (_widgetService.widgetState) {
-          case WidgetState.loading:
+          case AssistantWidgetState.loading:
             return _buildLoadingWidget();
-          case WidgetState.collapsed:
+          case AssistantWidgetState.collapsed:
             return _buildCollapsedWidget();
-          case WidgetState.connecting:
+          case AssistantWidgetState.connecting:
             return _buildConnectingWidget();
-          case WidgetState.expanded:
+          case AssistantWidgetState.expanded:
             return _buildExpandedWidget();
-          case WidgetState.conversation:
-            return _buildConversationWidget();
-          case WidgetState.error:
+          case AssistantWidgetState.conversation:
+            // This case should no longer be used as we use overlay instead
+            return _buildExpandedWidget();
+          case AssistantWidgetState.error:
             return _buildErrorWidget();
         }
       },
@@ -141,22 +164,23 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
             // Avatar
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: CircleAvatar(
-                radius: (widget.height - 16) / 2,
-                backgroundColor: _theme.primaryColor,
-                backgroundImage: settings?.logoIconUrl?.isNotEmpty == true
-                    ? NetworkImage(settings!.logoIconUrl!)
-                    : null,
-                child: settings?.logoIconUrl?.isEmpty != false
-                    ? Text(
-                        'AI',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: (widget.height - 16) / 3,
-                          fontWeight: FontWeight.bold,
+              child: SizedBox(
+                width: widget.height - 16,
+                height: widget.height - 16,
+                child: settings?.logoIconUrl?.isNotEmpty == true
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular((widget.height - 16) / 2),
+                        child: Image.network(
+                          settings!.logoIconUrl!,
+                          width: widget.height - 16,
+                          height: widget.height - 16,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildDefaultAvatar();
+                          },
                         ),
                       )
-                    : null,
+                    : _buildDefaultAvatar(),
               ),
             ),
             
@@ -168,10 +192,11 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
                   startCallText,
                   style: TextStyle(
                     color: _theme.textColor,
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: FontWeight.w500,
                   ),
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                 ),
               ),
             ),
@@ -217,14 +242,18 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
         : _widgetService.agentStatus.displayText;
 
     final audioVisualizerColor = _getAudioVisualizerColor(settings);
+    
+    // Use provided expanded dimensions or default to 2x the base size
+    final expandedWidth = widget.expandedWidth ?? widget.width;
+    final expandedHeight = widget.expandedHeight ?? (widget.height * 2);
 
     return GestureDetector(
       onTap: () {
-        _widgetService.changeWidgetState(WidgetState.conversation);
+        _widgetService.changeWidgetState(AssistantWidgetState.conversation);
       },
       child: Container(
-        width: widget.width,
-        height: widget.height * 2, // Expanded height
+        width: expandedWidth,
+        height: expandedHeight,
         decoration: BoxDecoration(
           color: _theme.backgroundColor,
           borderRadius: BorderRadius.circular(16),
@@ -245,7 +274,7 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
               child: Center(
                 child: AudioVisualizer(
                   color: audioVisualizerColor,
-                  width: widget.width - 32,
+                  width: expandedWidth - 32,
                   height: 60,
                   preset: settings?.audioVisualizerConfig?.preset ?? 'roundBars',
                   isActive: _widgetService.isCallActive,
@@ -273,42 +302,23 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   // Mute button
-                  IconButton(
+                  _buildControlButton(
                     onPressed: _widgetService.toggleMute,
-                    icon: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: _widgetService.isMuted 
-                            ? Colors.red 
-                            : _theme.buttonColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: _theme.borderColor),
-                      ),
-                      child: Icon(
-                        _widgetService.isMuted ? Icons.mic_off : Icons.mic,
-                        color: _widgetService.isMuted 
-                            ? Colors.white 
-                            : _theme.textColor,
-                        size: 20,
-                      ),
-                    ),
+                    icon: _widgetService.isMuted ? Icons.mic_off : Icons.mic,
+                    backgroundColor: _widgetService.isMuted 
+                        ? Colors.red 
+                        : _theme.buttonColor,
+                    iconColor: _widgetService.isMuted 
+                        ? Colors.white 
+                        : _theme.textColor,
                   ),
                   
                   // End call button
-                  IconButton(
+                  _buildControlButton(
                     onPressed: _widgetService.endCall,
-                    icon: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.call_end,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
+                    icon: Icons.call_end,
+                    backgroundColor: Colors.red,
+                    iconColor: Colors.white,
                   ),
                 ],
               ),
@@ -319,20 +329,35 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
     );
   }
 
-  Widget _buildConversationWidget() {
+  Widget _buildControlButton({
+    required VoidCallback onPressed,
+    required IconData icon,
+    required Color backgroundColor,
+    required Color iconColor,
+  }) {
     return SizedBox(
-      width: widget.width,
-      height: widget.height * 3, // Full conversation height
-      child: ConversationView(
-        transcript: _widgetService.transcript,
-        theme: _theme,
-        onClose: () {
-          _widgetService.changeWidgetState(WidgetState.expanded);
-        },
-        onSendMessage: _widgetService.sendMessage,
+      width: 64,
+      height: 64,
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            shape: BoxShape.circle,
+            border: Border.all(color: _theme.borderColor),
+          ),
+          child: Icon(
+            icon,
+            color: iconColor,
+            size: 24,
+          ),
+        ),
       ),
     );
   }
+
 
   Widget _buildErrorWidget() {
     return Container(
@@ -356,6 +381,19 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
           color: Colors.red,
           size: widget.height / 2,
         ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultAvatar() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular((widget.height - 16) / 2),
+      child: SvgPicture.asset(
+        'assets/images/default_avatar.svg',
+        package: 'flutter_telnyx_voice_ai_widget',
+        width: widget.height - 16,
+        height: widget.height - 16,
+        fit: BoxFit.cover,
       ),
     );
   }

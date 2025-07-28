@@ -1,5 +1,5 @@
 /// Represents the current state of the voice AI widget
-enum WidgetState {
+enum AssistantWidgetState {
   /// Widget is loading/initializing
   loading,
   

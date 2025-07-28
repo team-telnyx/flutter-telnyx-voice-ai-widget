@@ -12,6 +12,7 @@ dependencies:
   flutter_telnyx_voice_ai_widget:
     path: ../
   cupertino_icons: ^1.0.8
+  permission_handler: ^11.0.1
 
 dev_dependencies:
   flutter_test:
