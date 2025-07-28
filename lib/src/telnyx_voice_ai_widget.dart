@@ -241,7 +241,7 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
         ? settings!.speakToInterruptText!
         : _widgetService.agentStatus.displayText;
 
-    final audioVisualizerColor = _getAudioVisualizerColor(settings);
+    final audioVisualizerConfig = _getAudioVisualizerConfig(settings);
     
     // Use provided expanded dimensions or default to 2x the base size
     final expandedWidth = widget.expandedWidth ?? widget.width;
@@ -273,11 +273,13 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
               flex: 2,
               child: Center(
                 child: AudioVisualizer(
-                  color: audioVisualizerColor,
+                  color: audioVisualizerConfig['fallbackColor'],
+                  gradientName: audioVisualizerConfig['gradientName'],
                   width: expandedWidth - 32,
                   height: 60,
                   preset: settings?.audioVisualizerConfig?.preset ?? 'roundBars',
                   isActive: _widgetService.isCallActive,
+                  audioLevels: _widgetService.inboundAudioLevels,
                 ),
               ),
             ),
@@ -398,17 +400,57 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
     );
   }
 
-  Color _getAudioVisualizerColor(dynamic settings) {
-    final colorName = settings?.audioVisualizerConfig?.color;
-    switch (colorName?.toLowerCase()) {
+  Map<String, dynamic> _getAudioVisualizerConfig(dynamic settings) {
+    final colorName = settings?.audioVisualizerConfig?.color?.toLowerCase();
+    
+    // Check if we have a supported gradient
+    const supportedGradients = ['verdant', 'twilight', 'bloom', 'mystic', 'flare', 'glacier'];
+    
+    if (colorName != null && supportedGradients.contains(colorName)) {
+      return {
+        'gradientName': colorName,
+        'fallbackColor': _getGradientFallbackColor(colorName),
+      };
+    }
+    
+    // For non-gradient colors or unsupported ones, use solid colors
+    Color fallbackColor;
+    switch (colorName) {
+      case 'blue':
+        fallbackColor = const Color(0xFF3B82F6);
+        break;
+      case 'purple':  
+        fallbackColor = const Color(0xFF8B5CF6);
+        break;
+      case 'red':
+        fallbackColor = const Color(0xFFEF4444);
+        break;
+      default:
+        fallbackColor = _theme.primaryColor;
+        break;
+    }
+    
+    return {
+      'gradientName': null,
+      'fallbackColor': fallbackColor,
+    };
+  }
+  
+  Color _getGradientFallbackColor(String gradientName) {
+    // Return a representative color for each gradient as fallback
+    switch (gradientName) {
       case 'verdant':
         return const Color(0xFF10B981);
-      case 'blue':
-        return const Color(0xFF3B82F6);
-      case 'purple':
-        return const Color(0xFF8B5CF6);
-      case 'red':
-        return const Color(0xFFEF4444);
+      case 'twilight':
+        return const Color(0xFF81B9FF);
+      case 'bloom':
+        return const Color(0xFFFFD4FE);
+      case 'mystic':
+        return const Color(0xFFCA76FF);
+      case 'flare':
+        return const Color(0xFFFC5F00);
+      case 'glacier':
+        return const Color(0xFF4CE5F2);
       default:
         return _theme.primaryColor;
     }

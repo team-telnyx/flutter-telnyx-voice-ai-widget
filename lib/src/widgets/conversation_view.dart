@@ -220,7 +220,6 @@ class _ConversationViewState extends State<ConversationView> {
             ],
           ),
         ),
-        SizedBox(height: 8),
       ],
     );
 

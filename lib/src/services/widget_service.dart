@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:telnyx_webrtc/call.dart';
+import 'package:telnyx_webrtc/model/call_quality_metrics.dart';
 import 'package:telnyx_webrtc/model/socket_method.dart';
 import 'package:telnyx_webrtc/model/telnyx_message.dart';
 import 'package:telnyx_webrtc/model/transcript_item.dart';
@@ -21,6 +23,16 @@ class WidgetService extends ChangeNotifier {
   List<TranscriptItem> _transcript = [];
   bool _isMuted = false;
   bool _isCallActive = false;
+  
+  // Audio visualization data
+  final List<double> _inboundAudioLevels = [];
+  final List<double> _processedAudioLevels = [];
+  CallQualityMetrics? _callQualityMetrics;
+  
+  // Audio processing configuration
+  static const int maxAudioLevels = 100;
+  static const double _audioSensitivity = 2.0; // Boost factor for low levels
+  static const double _noiseGate = 0.05; // Minimum level to register
   
   // Overlay management
   OverlayEntry? _conversationOverlay;
@@ -46,6 +58,15 @@ class WidgetService extends ChangeNotifier {
   TelnyxClient get telnyxClient => _telnyxClient;
   
   bool get isConversationVisible => _isConversationVisible;
+  
+  /// Gets the current processed audio levels for visualization (preferred)
+  List<double> get inboundAudioLevels => List.unmodifiable(_processedAudioLevels.isNotEmpty ? _processedAudioLevels : _inboundAudioLevels);
+  
+  /// Gets the raw inbound audio levels
+  List<double> get rawInboundAudioLevels => List.unmodifiable(_inboundAudioLevels);
+  
+  /// Gets the current call quality metrics
+  CallQualityMetrics? get callQualityMetrics => _callQualityMetrics;
 
   /// Initialize the widget with assistant ID
   Future<void> initialize(String assistantId) async {
@@ -69,13 +90,16 @@ class WidgetService extends ChangeNotifier {
       _updateWidgetState(AssistantWidgetState.connecting);
 
       // Make a call to a hardcoded destination
-      await _telnyxClient.newInvite(
+      final call = _telnyxClient.newInvite(
         'AI Assistant User', // callerName
         'anonymous', // callerNumber
         'xxx', // destinationNumber
         '', // clientState
         debug: true
       );
+      
+      // Set up call quality metrics observation
+      _observeCallQuality(call);
     } catch (e) {
       debugPrint('Error starting call: $e');
       _updateWidgetState(AssistantWidgetState.error);
@@ -93,6 +117,12 @@ class WidgetService extends ChangeNotifier {
       // Clear transcript when call ends
       _transcript.clear();
       _telnyxClient.clearTranscript();
+      
+      // Clear audio levels and metrics
+      _inboundAudioLevels.clear();
+      _processedAudioLevels.clear();
+      _callQualityMetrics = null;
+      
       notifyListeners();
     } catch (e) {
       debugPrint('Error ending call: $e');
@@ -232,6 +262,52 @@ class WidgetService extends ChangeNotifier {
     _isCallActive = true;
     _updateWidgetState(AssistantWidgetState.expanded);
     _updateAgentStatus(AgentStatus.waiting);
+    
+    // Set up call quality observation when call is answered
+    final call = currentCall;
+    if (call != null) {
+      _observeCallQuality(call);
+    }
+  }
+  
+  /// Observe call quality metrics for audio visualization
+  void _observeCallQuality(Call call) {
+    // Set up call quality callback to receive metrics every 100ms
+    call.onCallQualityChange = (CallQualityMetrics metrics) {
+      _callQualityMetrics = metrics;
+
+      // Store raw audio level
+      _inboundAudioLevels.add(metrics.inboundAudioLevel);
+      while (_inboundAudioLevels.length > maxAudioLevels) {
+        _inboundAudioLevels.removeAt(0);
+      }
+
+      // Process audio level for better visualization
+      final processedLevel = _processAudioLevel(metrics.inboundAudioLevel);
+      _processedAudioLevels.add(processedLevel);
+      while (_processedAudioLevels.length > maxAudioLevels) {
+        _processedAudioLevels.removeAt(0);
+      }
+
+      notifyListeners();
+    };
+  }
+  
+  /// Process raw audio level for better visualization
+  double _processAudioLevel(double rawLevel) {
+    // Apply noise gate
+    if (rawLevel < _noiseGate) {
+      return 0.0;
+    }
+    
+    // Apply sensitivity boost for low levels
+    double processed = rawLevel * _audioSensitivity;
+    
+    // Apply dynamic range compression using power curve
+    processed = math.pow(processed, 0.8).toDouble();
+    
+    // Clamp to valid range
+    return processed.clamp(0.0, 1.0);
   }
 
   /// Update widget state
