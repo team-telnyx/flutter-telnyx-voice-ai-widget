@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:telnyx_webrtc/call.dart';
 import 'package:telnyx_webrtc/model/call_quality_metrics.dart';
@@ -11,6 +10,7 @@ import 'package:telnyx_webrtc/telnyx_client.dart';
 import 'package:uuid/uuid.dart';
 import '../models/agent_status.dart';
 import '../models/widget_state.dart';
+import 'package:telnyx_webrtc/telnyx_webrtc.dart';
 
 /// Service that manages the Telnyx client and widget state
 class WidgetService extends ChangeNotifier {
@@ -19,7 +19,7 @@ class WidgetService extends ChangeNotifier {
 
   AssistantWidgetState _widgetState = AssistantWidgetState.loading;
   AgentStatus _agentStatus = AgentStatus.idle;
-  dynamic _widgetSettings;
+  WidgetSettings? _widgetSettings;
   List<TranscriptItem> _transcript = [];
   bool _isMuted = false;
   bool _isCallActive = false;
@@ -47,7 +47,7 @@ class WidgetService extends ChangeNotifier {
 
   AgentStatus get agentStatus => _agentStatus;
 
-  dynamic get widgetSettings => _widgetSettings;
+  WidgetSettings? get widgetSettings => _widgetSettings;
 
   List<TranscriptItem> get transcript => List.unmodifiable(_transcript);
 
@@ -123,6 +123,11 @@ class WidgetService extends ChangeNotifier {
       _processedAudioLevels.clear();
       _callQualityMetrics = null;
       
+      // Update overlay if it's visible to reflect cleared transcript
+      if (_conversationOverlay != null) {
+        _conversationOverlay!.markNeedsBuild();
+      }
+      
       notifyListeners();
     } catch (e) {
       debugPrint('Error ending call: $e');
@@ -148,7 +153,7 @@ class WidgetService extends ChangeNotifier {
   Future<void> sendMessage(String message) async {
     try {
       // Add user message to transcript
-      _transcript.add(
+     /* _transcript.add(
         TranscriptItem(
           role: 'user',
           content: message,
@@ -156,10 +161,9 @@ class WidgetService extends ChangeNotifier {
           id: _uuid.v4(),
         ),
       );
-      notifyListeners();
+      notifyListeners();*/
 
-      // TODO: Implement sending message through Telnyx client
-      // This would depend on the specific API available in the SDK
+      currentCall?.sendConversationMessage(message);
     } catch (e) {
       debugPrint('Error sending message: $e');
     }
@@ -168,26 +172,30 @@ class WidgetService extends ChangeNotifier {
   /// Observe socket responses
   void _observeResponses() {
     _telnyxClient.onSocketMessageReceived = (TelnyxMessage message) async {
-      debugPrint('Socket message received: ${message.socketMethod}');
+      debugPrint('📨 Socket message received: ${message.socketMethod}');
 
       switch (message.socketMethod) {
         case SocketMethod.clientReady:
+          debugPrint('✅ Client ready');
           _handleClientReady();
           break;
         case SocketMethod.aiConversation:
+          debugPrint('AI CONVERSATION MESSAGE :: ${message.message}');
           _handleAiConversation(message);
           break;
         case SocketMethod.answer:
+          debugPrint('📞 Call answered');
           _handleCallAnswer();
           break;
         default:
+          debugPrint('❓ Unknown socket method: ${message.socketMethod}');
           break;
       }
     };
 
     // Use the SDK's built-in transcript management
     _telnyxClient.onTranscriptUpdate = (List<TranscriptItem> transcriptItems) {
-      _transcript = transcriptItems;
+      _transcript = List.from(transcriptItems);
       notifyListeners();
     };
   }
@@ -208,60 +216,201 @@ class WidgetService extends ChangeNotifier {
   /// Handle AI conversation messages
   void _handleAiConversation(TelnyxMessage message) {
     try {
-      // The message.message property contains the actual data
-      // We need to handle it as a dynamic type since the SDK doesn't provide specific types
-      final messageData = message.message;
-      Map<String, dynamic>? params;
+      // Use the SDK's properly parsed AI conversation params
+      final aiParams = message.message.aiConversationParams;
       
-      // Try to extract params from the message data
-      if (messageData != null) {
-        // The message data might have a params property
-        try {
-          // Use dynamic access since we don't have the exact type
-          params = (messageData as dynamic).params as Map<String, dynamic>?;
-        } catch (_) {
-          // If that doesn't work, the message data might be the params directly
-          try {
-            params = Map<String, dynamic>.from(messageData as Map);
-          } catch (_) {
-            debugPrint('Unable to extract params from AI conversation message');
-            return;
-          }
-        }
+      if (aiParams == null) {
+        debugPrint('❌ AI conversation params are null');
+        return;
       }
       
-      if (params != null) {
-        final type = params['type'] as String?;
-
-        if (type == 'widget_settings') {
-          final settingsData =
-              params['widget_settings'] as Map<String, dynamic>?;
-          if (settingsData != null) {
-            // Store widget settings as a dynamic map since WidgetSettings is not available
-            _widgetSettings = settingsData;
-            notifyListeners();
-          }
-        } else if (type == 'conversation.item.created') {
-          // User finished speaking, agent is thinking
-          _updateAgentStatus(AgentStatus.thinking);
-        } else if (type == 'response.text.delta') {
-          // Agent started responding, can be interrupted
-          _updateAgentStatus(AgentStatus.waiting);
-        } else if (type == 'response.done' || type == 'response.text.done') {
-          // Response is complete, agent is idle
-          _updateAgentStatus(AgentStatus.idle);
-        }
+      final type = aiParams.type;
+      debugPrint('🔍 AI Conversation message received - Type: $type');
+      
+      switch (type) {
+        case 'widget_settings':
+          _handleWidgetSettings(aiParams);
+          break;
+        case 'conversation.item.created':
+          _handleConversationItemCreated(aiParams);
+          break;
+        case 'response.text.delta':
+          _handleResponseTextDelta(aiParams);
+          break;
+        case 'response.done':
+        case 'response.text.done':
+          _handleResponseDone(aiParams);
+          break;
+        case 'response.created':
+          _handleResponseCreated(aiParams);
+          break;
+        case 'response.output_item.added':
+          _handleResponseOutputItemAdded(aiParams);
+          break;
+        case 'response.content_part.added':
+          _handleResponseContentPartAdded(aiParams);
+          break;
+        default:
+          debugPrint('❓ Unknown AI conversation type: $type');
+          break;
       }
     } catch (e) {
       debugPrint('Error handling AI conversation: $e');
     }
+  }
+  
+  void _handleWidgetSettings(AiConversationParams params) {
+    if (params.widgetSettings != null) {
+      // Store WidgetSettings object directly
+      _widgetSettings = params.widgetSettings!;
+      debugPrint('✅ Widget settings updated');
+      notifyListeners();
+    }
+  }
+  
+  void _handleConversationItemCreated(AiConversationParams params) {
+    final item = params.item;
+    if (item != null) {
+      if (item.role == 'user') {
+        // User finished speaking, agent is thinking
+        debugPrint('🤔 User finished speaking - Agent thinking');
+        _updateAgentStatus(AgentStatus.thinking);
+        
+        // Add user message to transcript if it has content
+        if (item.content != null && item.content!.isNotEmpty) {
+          final content = item.content!.first;
+          if (content.transcript != null && content.transcript!.isNotEmpty) {
+            _addTranscriptItem(TranscriptItem(
+              role: 'user',
+              content: content.transcript!,
+              timestamp: DateTime.now(),
+              id: item.id ?? _uuid.v4(),
+            ));
+          }
+        }
+      } else if (item.role == 'assistant') {
+        // Assistant item created
+        debugPrint('🤖 Assistant item created');
+      }
+    }
+  }
+  
+  void _handleResponseTextDelta(AiConversationParams params) {
+    // Agent started responding, can be interrupted
+    debugPrint('💬 AI started responding - Agent waiting');
+    _updateAgentStatus(AgentStatus.waiting);
+    
+    // Handle delta text for building transcript
+    if (params.delta != null && params.delta!.isNotEmpty) {
+      _handleAssistantTextDelta(params.delta!, params.itemId, params.responseId);
+    }
+  }
+  
+  void _handleResponseDone(AiConversationParams params) {
+    // Response is complete, agent is idle
+    debugPrint('✅ Response complete - Agent idle');
+    _updateAgentStatus(AgentStatus.idle);
+    
+    // Mark any partial response as complete
+    if (params.responseId != null) {
+      _finalizeAssistantResponse(params.responseId!);
+    }
+  }
+  
+  void _handleResponseCreated(AiConversationParams params) {
+    debugPrint('🔄 Response created');
+    // Response generation started - this usually means the agent is about to respond
+    _updateAgentStatus(AgentStatus.waiting);
+  }
+  
+  void _handleResponseOutputItemAdded(AiConversationParams params) {
+    debugPrint('📤 Response output item added');
+    // Response output item added - response is being prepared
+  }
+  
+  void _handleResponseContentPartAdded(AiConversationParams params) {
+    debugPrint('📝 Response content part added');
+    // Content part added to response
+  }
+  
+  /// Handle assistant text delta for building transcript
+  void _handleAssistantTextDelta(String delta, String? itemId, String? responseId) {
+    if (itemId == null) return;
+    
+    // Find existing assistant message or create new one
+    final existingIndex = _transcript.indexWhere((item) => item.id == itemId);
+    
+    if (existingIndex != -1) {
+      // Update existing message
+      final existing = _transcript[existingIndex];
+      _transcript[existingIndex] = TranscriptItem(
+        role: existing.role,
+        content: existing.content + delta,
+        timestamp: existing.timestamp,
+        id: existing.id,
+        isPartial: true,
+      );
+      
+      // Update overlay if it's visible
+      if (_conversationOverlay != null) {
+        _conversationOverlay!.markNeedsBuild();
+      }
+      
+      notifyListeners();
+    } else {
+      // Create new assistant message
+      _addTranscriptItem(TranscriptItem(
+        role: 'assistant',
+        content: delta,
+        timestamp: DateTime.now(),
+        id: itemId,
+        isPartial: true,
+      ));
+    }
+  }
+  
+  /// Add transcript item to the list
+  void _addTranscriptItem(TranscriptItem item) {
+    _transcript.add(item);
+    
+    // Update overlay if it's visible
+    if (_conversationOverlay != null) {
+      _conversationOverlay!.markNeedsBuild();
+    }
+    
+    notifyListeners();
+  }
+  
+  /// Finalize assistant response by marking it as complete
+  void _finalizeAssistantResponse(String responseId) {
+    // Find all partial responses with this response ID and mark them as complete
+    for (int i = 0; i < _transcript.length; i++) {
+      final item = _transcript[i];
+      if (item.role == 'assistant' && item.isPartial == true) {
+        // We need to create a new TranscriptItem since it's immutable
+        _transcript[i] = TranscriptItem(
+          role: item.role,
+          content: item.content,
+          timestamp: item.timestamp,
+          id: item.id,
+          isPartial: false,
+        );
+      }
+    }
+    
+    // Update overlay if it's visible
+    if (_conversationOverlay != null) {
+      _conversationOverlay!.markNeedsBuild();
+    }
+    
+    notifyListeners();
   }
 
   /// Handle call answer
   void _handleCallAnswer() {
     _isCallActive = true;
     _updateWidgetState(AssistantWidgetState.expanded);
-    _updateAgentStatus(AgentStatus.waiting);
+    _updateAgentStatus(AgentStatus.idle); // Start idle, let conversation flow control status
     
     // Set up call quality observation when call is answered
     final call = currentCall;
@@ -352,7 +501,9 @@ class WidgetService extends ChangeNotifier {
   /// Create and show the conversation overlay with context
   void createConversationOverlay(BuildContext context, Widget Function() widgetBuilder) {
     if (_conversationOverlay != null) {
-      return; // Already exists
+      // Update existing overlay instead of creating a new one
+      _conversationOverlay!.markNeedsBuild();
+      return;
     }
     
     _conversationOverlay = OverlayEntry(
@@ -365,6 +516,7 @@ class WidgetService extends ChangeNotifier {
   /// Update agent status
   void _updateAgentStatus(AgentStatus newStatus) {
     if (_agentStatus != newStatus) {
+      debugPrint('📊 Agent status: $_agentStatus → $newStatus');
       _agentStatus = newStatus;
       notifyListeners();
     }

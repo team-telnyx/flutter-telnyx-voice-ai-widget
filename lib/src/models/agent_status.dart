@@ -10,16 +10,27 @@ enum AgentStatus {
   idle,
 }
 
-/// Extension to provide display text for agent status
+/// Extension to provide default display text for agent status
+/// Note: In practice, use the config-aware text methods in widgets instead
 extension AgentStatusExtension on AgentStatus {
   String get displayText {
     switch (this) {
       case AgentStatus.thinking:
-        return 'Agent is thinking...';
+        return 'Agent is thinking...'; // Default fallback
       case AgentStatus.waiting:
-        return 'Speak to interrupt';
+        return 'Speak to interrupt'; // Default fallback
       case AgentStatus.idle:
         return '';
     }
+  }
+  
+  /// Check if the agent is in a state where it can be interrupted
+  bool get canBeInterrupted {
+    return this == AgentStatus.waiting;
+  }
+  
+  /// Check if the agent is actively processing
+  bool get isProcessing {
+    return this == AgentStatus.thinking;
   }
 }

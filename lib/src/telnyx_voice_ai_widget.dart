@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:telnyx_webrtc/telnyx_webrtc.dart';
 import 'models/widget_theme.dart';
 import 'models/widget_state.dart';
 import 'models/agent_status.dart';
@@ -58,7 +59,7 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
       // Update theme based on widget settings
       final settings = _widgetService.widgetSettings;
       if (settings?.theme != null) {
-        _theme = WidgetTheme.fromString(settings!.theme);
+        _theme = WidgetTheme.fromString(settings!.theme!);
       }
     });
   }
@@ -237,9 +238,7 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
 
   Widget _buildExpandedWidget() {
     final settings = _widgetService.widgetSettings;
-    final speakToInterruptText = settings?.speakToInterruptText?.isNotEmpty == true
-        ? settings!.speakToInterruptText!
-        : _widgetService.agentStatus.displayText;
+    final statusText = _getAgentStatusText(settings, _widgetService.agentStatus);
 
     final audioVisualizerConfig = _getAudioVisualizerConfig(settings);
     
@@ -288,7 +287,7 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Text(
-                speakToInterruptText,
+                statusText,
                 style: TextStyle(
                   color: _theme.secondaryTextColor,
                   fontSize: 14,
@@ -400,7 +399,7 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
     );
   }
 
-  Map<String, dynamic> _getAudioVisualizerConfig(dynamic settings) {
+  Map<String, dynamic> _getAudioVisualizerConfig(WidgetSettings? settings) {
     final colorName = settings?.audioVisualizerConfig?.color?.toLowerCase();
     
     // Check if we have a supported gradient
@@ -454,6 +453,23 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
       default:
         return _theme.primaryColor;
     }
+  }
+  
+  String _getAgentStatusText(WidgetSettings? settings, AgentStatus agentStatus) {
+    // Match TypeScript logic: show different text based on agent status
+    if (agentStatus == AgentStatus.thinking) {
+      // Agent is thinking - show thinking text
+      return settings?.agentThinkingText?.isNotEmpty == true
+          ? settings!.agentThinkingText!
+          : 'Agent is thinking...'; // Default fallback
+    } else if (agentStatus == AgentStatus.waiting) {
+      // Agent is waiting/can be interrupted - show interrupt text
+      return settings?.speakToInterruptText?.isNotEmpty == true
+          ? settings!.speakToInterruptText!
+          : 'Speak to interrupt'; // Default fallback
+    }
+    // Idle state - no text
+    return 'Speak to interrupt';
   }
 }
 
