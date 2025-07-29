@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:telnyx_webrtc/model/transcript_item.dart';
 import '../models/widget_theme.dart';
+import 'typing_indicator.dart';
 
 /// Widget that displays the conversation transcript
 class ConversationView extends StatefulWidget {
@@ -9,6 +11,7 @@ class ConversationView extends StatefulWidget {
   final VoidCallback onClose;
   final Function(String) onSendMessage;
   final bool isFullScreen;
+  final String? avatarUrl;
 
   const ConversationView({
     super.key,
@@ -17,6 +20,7 @@ class ConversationView extends StatefulWidget {
     required this.onClose,
     required this.onSendMessage,
     this.isFullScreen = false,
+    this.avatarUrl,
   });
 
   @override
@@ -113,18 +117,7 @@ class _ConversationViewState extends State<ConversationView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (!isUser) ...[
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: widget.theme.primaryColor,
-                        child: Text(
-                          'AI',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                      _buildAssistantAvatar(),
                       const SizedBox(width: 8),
                     ],
                     Expanded(
@@ -137,14 +130,7 @@ class _ConversationViewState extends State<ConversationView> {
                                   : widget.theme.buttonColor,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(
-                          item.content ?? '',
-                          style: TextStyle(
-                            color:
-                                isUser ? Colors.white : widget.theme.textColor,
-                            fontSize: 14,
-                          ),
-                        ),
+                        child: _buildMessageContent(item, isUser),
                       ),
                     ),
                     if (isUser) ...[
@@ -167,14 +153,16 @@ class _ConversationViewState extends State<ConversationView> {
         ),
 
         // Message input
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: widget.theme.borderColor, width: 1),
+        SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: widget.theme.borderColor, width: 1),
+              ),
             ),
-          ),
-          child: Row(
+            child: Row(
             children: [
               Expanded(
                 child: TextField(
@@ -198,7 +186,7 @@ class _ConversationViewState extends State<ConversationView> {
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 12,
+                      vertical: 16,
                     ),
                   ),
                   style: TextStyle(color: widget.theme.textColor),
@@ -220,6 +208,7 @@ class _ConversationViewState extends State<ConversationView> {
             ],
           ),
         ),
+      ),
       ],
     );
 
@@ -242,5 +231,57 @@ class _ConversationViewState extends State<ConversationView> {
         child: content,
       );
     }
+  }
+
+  Widget _buildAssistantAvatar() {
+    if (widget.avatarUrl?.isNotEmpty == true) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.network(
+          widget.avatarUrl!,
+          width: 32,
+          height: 32,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildDefaultAvatar();
+          },
+        ),
+      );
+    } else {
+      return _buildDefaultAvatar();
+    }
+  }
+
+  Widget _buildDefaultAvatar() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: SvgPicture.asset(
+        'assets/images/default_avatar.svg',
+        package: 'flutter_telnyx_voice_ai_widget',
+        width: 32,
+        height: 32,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+
+  Widget _buildMessageContent(TranscriptItem item, bool isUser) {
+    // Show typing indicator for partial assistant messages
+    if (!isUser && item.isPartial == true) {
+      return TypingIndicator(
+        dotColor: widget.theme.textColor,
+        dotSize: 6,
+        spacing: 3,
+      );
+    }
+
+    // Show regular text for all other messages
+    return Text(
+      item.content,
+      style: TextStyle(
+        color: isUser ? Colors.white : widget.theme.textColor,
+        fontSize: 14,
+      ),
+    );
   }
 }

@@ -152,17 +152,6 @@ class WidgetService extends ChangeNotifier {
   /// Send a text message
   Future<void> sendMessage(String message) async {
     try {
-      // Add user message to transcript
-     /* _transcript.add(
-        TranscriptItem(
-          role: 'user',
-          content: message,
-          timestamp: DateTime.now(),
-          id: _uuid.v4(),
-        ),
-      );
-      notifyListeners();*/
-
       currentCall?.sendConversationMessage(message);
     } catch (e) {
       debugPrint('Error sending message: $e');
@@ -186,6 +175,12 @@ class WidgetService extends ChangeNotifier {
         case SocketMethod.answer:
           debugPrint('📞 Call answered');
           _handleCallAnswer();
+          break;
+        case SocketMethod.bye:
+          debugPrint('📞 Call ended');
+          _isCallActive = false;
+          _updateWidgetState(AssistantWidgetState.collapsed);
+          _updateAgentStatus(AgentStatus.idle);
           break;
         default:
           debugPrint('❓ Unknown socket method: ${message.socketMethod}');

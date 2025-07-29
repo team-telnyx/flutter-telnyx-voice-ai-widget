@@ -85,6 +85,7 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
                 theme: _theme,
                 onClose: _widgetService.hideConversationOverlay,
                 onSendMessage: _widgetService.sendMessage,
+                avatarUrl: _widgetService.widgetSettings?.logoIconUrl,
               );
             });
           });

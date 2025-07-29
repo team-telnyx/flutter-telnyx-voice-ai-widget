@@ -10,6 +10,7 @@ class ConversationOverlay extends StatefulWidget {
   final WidgetTheme theme;
   final VoidCallback onClose;
   final Function(String) onSendMessage;
+  final String? avatarUrl;
 
   const ConversationOverlay({
     super.key,
@@ -17,6 +18,7 @@ class ConversationOverlay extends StatefulWidget {
     required this.theme,
     required this.onClose,
     required this.onSendMessage,
+    this.avatarUrl,
   });
 
   @override
@@ -163,6 +165,7 @@ class _ConversationOverlayState extends State<ConversationOverlay>
                               onClose: _close,
                               onSendMessage: widget.onSendMessage,
                               isFullScreen: true,
+                              avatarUrl: widget.avatarUrl,
                             ),
                           ),
                         ],
