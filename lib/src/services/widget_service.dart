@@ -179,6 +179,11 @@ class WidgetService extends ChangeNotifier {
         case SocketMethod.bye:
           debugPrint('📞 Call ended');
           _isCallActive = false;
+
+          // clear transcript and audio levels when call ends
+          _transcript.clear();
+          _inboundAudioLevels.clear();
+
           _updateWidgetState(AssistantWidgetState.collapsed);
           _updateAgentStatus(AgentStatus.idle);
           break;
