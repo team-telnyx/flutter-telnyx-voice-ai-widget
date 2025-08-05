@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:telnyx_webrtc/telnyx_webrtc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'models/widget_theme.dart';
 import 'models/widget_state.dart';
-import 'models/agent_status.dart';
 import 'services/widget_service.dart';
-import 'widgets/audio_visualizer.dart';
 import 'widgets/conversation_overlay.dart';
+import 'widgets/loading_widget.dart';
+import 'widgets/collapsed_widget.dart';
+import 'widgets/connecting_widget.dart';
+import 'widgets/expanded_widget.dart';
+import 'widgets/error_widget.dart';
 
 /// Main Telnyx Voice AI Widget
 class TelnyxVoiceAiWidget extends StatefulWidget {
@@ -95,364 +95,72 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
         
         switch (_widgetService.widgetState) {
           case AssistantWidgetState.loading:
-            return _buildLoadingWidget();
+            return LoadingWidget(
+              width: widget.width,
+              height: widget.height,
+              theme: _theme,
+            );
           case AssistantWidgetState.collapsed:
-            return _buildCollapsedWidget();
+            return CollapsedWidget(
+              width: widget.width,
+              height: widget.height,
+              theme: _theme,
+              settings: _widgetService.widgetSettings,
+              onTap: _widgetService.startCall,
+            );
           case AssistantWidgetState.connecting:
-            return _buildConnectingWidget();
+            return ConnectingWidget(
+              width: widget.width,
+              height: widget.height,
+              theme: _theme,
+            );
           case AssistantWidgetState.expanded:
-            return _buildExpandedWidget();
+            return ExpandedWidget(
+              width: widget.expandedWidth ?? widget.width,
+              height: widget.expandedHeight ?? (widget.height * 2),
+              theme: _theme,
+              settings: _widgetService.widgetSettings,
+              agentStatus: _widgetService.agentStatus,
+              isMuted: _widgetService.isMuted,
+              isCallActive: _widgetService.isCallActive,
+              audioLevels: _widgetService.inboundAudioLevels,
+              onTap: () => _widgetService.changeWidgetState(AssistantWidgetState.conversation),
+              onToggleMute: _widgetService.toggleMute,
+              onEndCall: _widgetService.endCall,
+            );
           case AssistantWidgetState.conversation:
             // This case should no longer be used as we use overlay instead
-            return _buildExpandedWidget();
+            return ExpandedWidget(
+              width: widget.expandedWidth ?? widget.width,
+              height: widget.expandedHeight ?? (widget.height * 2),
+              theme: _theme,
+              settings: _widgetService.widgetSettings,
+              agentStatus: _widgetService.agentStatus,
+              isMuted: _widgetService.isMuted,
+              isCallActive: _widgetService.isCallActive,
+              audioLevels: _widgetService.inboundAudioLevels,
+              onTap: () => _widgetService.changeWidgetState(AssistantWidgetState.conversation),
+              onToggleMute: _widgetService.toggleMute,
+              onEndCall: _widgetService.endCall,
+            );
           case AssistantWidgetState.error:
-            return _buildErrorWidget();
+            return ErrorDisplayWidget(
+              width: widget.expandedWidth ?? widget.width,
+              height: widget.expandedHeight ?? (widget.height * 2),
+              theme: _theme,
+              onLaunchUrl: _launchAssistantSettingsUrl,
+            );
         }
       },
     );
   }
 
-  Widget _buildLoadingWidget() {
-    return Container(
-      width: widget.width,
-      height: widget.height,
-      decoration: BoxDecoration(
-        color: _theme.backgroundColor,
-        borderRadius: BorderRadius.circular(widget.height / 2),
-        boxShadow: [
-          BoxShadow(
-            color: _theme.shadowColor,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Center(
-        child: SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(_theme.primaryColor),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCollapsedWidget() {
-    final settings = _widgetService.widgetSettings;
-    final startCallText = settings?.startCallText?.isNotEmpty == true 
-        ? settings!.startCallText! 
-        : "Let's chat";
-
-    return GestureDetector(
-      onTap: _widgetService.startCall,
-      child: Container(
-        width: widget.width,
-        height: widget.height,
-        decoration: BoxDecoration(
-          color: _theme.backgroundColor,
-          borderRadius: BorderRadius.circular(widget.height / 2),
-          border: Border.all(color: _theme.borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: _theme.shadowColor,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Avatar
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: SizedBox(
-                width: widget.height - 16,
-                height: widget.height - 16,
-                child: settings?.logoIconUrl?.isNotEmpty == true
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular((widget.height - 16) / 2),
-                        child: Image.network(
-                          settings!.logoIconUrl!,
-                          width: widget.height - 16,
-                          height: widget.height - 16,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return _buildDefaultAvatar();
-                          },
-                        ),
-                      )
-                    : _buildDefaultAvatar(),
-              ),
-            ),
-            
-            // Text
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: Text(
-                  startCallText,
-                  style: TextStyle(
-                    color: _theme.textColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConnectingWidget() {
-    return Container(
-      width: widget.width,
-      height: widget.height,
-      decoration: BoxDecoration(
-        color: _theme.backgroundColor,
-        borderRadius: BorderRadius.circular(widget.height / 2),
-        border: Border.all(color: _theme.borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: _theme.shadowColor,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(_theme.primaryColor),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExpandedWidget() {
-    final settings = _widgetService.widgetSettings;
-    final statusText = _getAgentStatusText(settings, _widgetService.agentStatus);
-
-    final audioVisualizerConfig = _getAudioVisualizerConfig(settings);
-    
-    // Use provided expanded dimensions or default to 2x the base size
-    final expandedWidth = widget.expandedWidth ?? widget.width;
-    final expandedHeight = widget.expandedHeight ?? (widget.height * 2);
-
-    return GestureDetector(
-      onTap: () {
-        _widgetService.changeWidgetState(AssistantWidgetState.conversation);
-      },
-      child: Container(
-        width: expandedWidth,
-        height: expandedHeight,
-        decoration: BoxDecoration(
-          color: _theme.backgroundColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _theme.borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: _theme.shadowColor,
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Audio Visualizer
-            Expanded(
-              flex: 2,
-              child: Center(
-                child: AudioVisualizer(
-                  color: audioVisualizerConfig['fallbackColor'],
-                  gradientName: audioVisualizerConfig['gradientName'],
-                  width: expandedWidth - 32,
-                  height: 60,
-                  preset: settings?.audioVisualizerConfig?.preset ?? 'roundBars',
-                  isActive: _widgetService.isCallActive,
-                  audioLevels: _widgetService.inboundAudioLevels,
-                ),
-              ),
-            ),
-            
-            // Status Text
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                statusText,
-                style: TextStyle(
-                  color: _theme.secondaryTextColor,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            
-            // Controls
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Mute button
-                  _buildControlButton(
-                    onPressed: _widgetService.toggleMute,
-                    icon: _widgetService.isMuted ? Icons.mic_off : Icons.mic,
-                    backgroundColor: _widgetService.isMuted 
-                        ? Colors.red 
-                        : _theme.buttonColor,
-                    iconColor: _widgetService.isMuted 
-                        ? Colors.white 
-                        : _theme.textColor,
-                  ),
-                  
-                  // End call button
-                  _buildControlButton(
-                    onPressed: _widgetService.endCall,
-                    icon: Icons.call_end,
-                    backgroundColor: Colors.red,
-                    iconColor: Colors.white,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildControlButton({
-    required VoidCallback onPressed,
-    required IconData icon,
-    required Color backgroundColor,
-    required Color iconColor,
-  }) {
-    return SizedBox(
-      width: 64,
-      height: 64,
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            shape: BoxShape.circle,
-            border: Border.all(color: _theme.borderColor),
-          ),
-          child: Icon(
-            icon,
-            color: iconColor,
-            size: 24,
-          ),
-        ),
-      ),
-    );
-  }
 
 
-  Widget _buildErrorWidget() {
-    // Use expanded dimensions for error state as specified in requirements
-    final expandedWidth = widget.expandedWidth ?? widget.width;
-    final expandedHeight = widget.expandedHeight ?? (widget.height * 2);
-    
-    return Container(
-      width: expandedWidth,
-      height: expandedHeight,
-      decoration: BoxDecoration(
-        color: _theme.backgroundColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red),
-        boxShadow: [
-          BoxShadow(
-            color: _theme.shadowColor,
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Error icon
-            Icon(
-              Icons.error_outline,
-              color: Colors.red,
-              size: 48,
-            ),
-            const SizedBox(height: 16),
-            
-            // Title
-            Text(
-              'An error occurred',
-              style: TextStyle(
-                color: _theme.textColor,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            
-            // First error message
-            Text(
-              'Failed to initialize the Telnyx AI Agent client. Please check your agent ID and ensure that you are connected to the internet.',
-              style: TextStyle(
-                color: _theme.secondaryTextColor,
-                fontSize: 14,
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            
-            // Second error message with link
-            RichText(
-              textAlign: TextAlign.center,
-              text: TextSpan(
-                style: TextStyle(
-                  color: _theme.secondaryTextColor,
-                  fontSize: 14,
-                  height: 1.4,
-                ),
-                children: [
-                  const TextSpan(
-                    text: 'Make sure that the ',
-                  ),
-                  TextSpan(
-                    text: 'Support Unauthenticated Web Calls',
-                    style: TextStyle(
-                      color: _theme.primaryColor,
-                      decoration: TextDecoration.underline,
-                    ),
-                    recognizer: TapGestureRecognizer()
-                      ..onTap = () => _launchAssistantSettingsUrl(),
-                  ),
-                  const TextSpan(
-                    text: ' option is enabled in your Telnyx agent settings.',
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
+
+
+
 
   /// Launch the Telnyx assistant settings URL
   Future<void> _launchAssistantSettingsUrl() async {
@@ -471,90 +179,6 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
     }
   }
 
-  Widget _buildDefaultAvatar() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular((widget.height - 16) / 2),
-      child: SvgPicture.asset(
-        'assets/images/default_avatar.svg',
-        package: 'flutter_telnyx_voice_ai_widget',
-        width: widget.height - 16,
-        height: widget.height - 16,
-        fit: BoxFit.cover,
-      ),
-    );
-  }
 
-  Map<String, dynamic> _getAudioVisualizerConfig(WidgetSettings? settings) {
-    final colorName = settings?.audioVisualizerConfig?.color?.toLowerCase();
-    
-    // Check if we have a supported gradient
-    const supportedGradients = ['verdant', 'twilight', 'bloom', 'mystic', 'flare', 'glacier'];
-    
-    if (colorName != null && supportedGradients.contains(colorName)) {
-      return {
-        'gradientName': colorName,
-        'fallbackColor': _getGradientFallbackColor(colorName),
-      };
-    }
-    
-    // For non-gradient colors or unsupported ones, use solid colors
-    Color fallbackColor;
-    switch (colorName) {
-      case 'blue':
-        fallbackColor = const Color(0xFF3B82F6);
-        break;
-      case 'purple':  
-        fallbackColor = const Color(0xFF8B5CF6);
-        break;
-      case 'red':
-        fallbackColor = const Color(0xFFEF4444);
-        break;
-      default:
-        fallbackColor = _theme.primaryColor;
-        break;
-    }
-    
-    return {
-      'gradientName': null,
-      'fallbackColor': fallbackColor,
-    };
-  }
-  
-  Color _getGradientFallbackColor(String gradientName) {
-    // Return a representative color for each gradient as fallback
-    switch (gradientName) {
-      case 'verdant':
-        return const Color(0xFF10B981);
-      case 'twilight':
-        return const Color(0xFF81B9FF);
-      case 'bloom':
-        return const Color(0xFFFFD4FE);
-      case 'mystic':
-        return const Color(0xFFCA76FF);
-      case 'flare':
-        return const Color(0xFFFC5F00);
-      case 'glacier':
-        return const Color(0xFF4CE5F2);
-      default:
-        return _theme.primaryColor;
-    }
-  }
-  
-  String _getAgentStatusText(WidgetSettings? settings, AgentStatus agentStatus) {
-    // Match TypeScript logic: show different text based on agent status
-    if (agentStatus == AgentStatus.thinking) {
-      // Agent is thinking - show thinking text
-      return settings?.agentThinkingText?.isNotEmpty == true
-          ? settings!.agentThinkingText!
-          : 'Agent is thinking...'; // Default fallback
-    } else if (agentStatus == AgentStatus.waiting) {
-      // Agent is waiting/can be interrupted - show interrupt text
-      return settings?.speakToInterruptText?.isNotEmpty == true
-          ? settings!.speakToInterruptText!
-          : 'Speak to interrupt'; // Default fallback
-    }
-    // Idle state - no text
-    return 'Speak to interrupt';
-  }
 }
 
