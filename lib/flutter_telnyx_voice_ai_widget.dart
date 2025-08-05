@@ -1,5 +1,8 @@
-/// A Calculator.
-class Calculator {
-  /// Returns [value] plus 1.
-  int addOne(int value) => value + 1;
-}
+library flutter_telnyx_voice_ai_widget;
+
+export 'src/telnyx_voice_ai_widget.dart';
+export 'src/models/widget_theme.dart';
+export 'src/models/agent_status.dart';
+export 'src/models/widget_state.dart';
+export 'src/models/logo_icon_settings.dart';
+export 'package:telnyx_webrtc/telnyx_webrtc.dart' show WidgetSettings;
