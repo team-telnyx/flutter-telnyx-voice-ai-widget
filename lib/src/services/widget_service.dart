@@ -49,7 +49,7 @@ class WidgetService extends ChangeNotifier {
 
   AgentStatus get agentStatus => _agentStatus;
 
-  WidgetSettings? get widgetSettings => _widgetSettings;
+  WidgetSettings? get widgetSettings => _widgetSettingOverride ?? _widgetSettings;
 
   List<TranscriptItem> get transcript => List.unmodifiable(_transcript);
 
@@ -72,10 +72,13 @@ class WidgetService extends ChangeNotifier {
   /// Gets the current call quality metrics
   CallQualityMetrics? get callQualityMetrics => _callQualityMetrics;
 
+  WidgetSettings? _widgetSettingOverride;
+
   /// Initialize the widget with assistant ID
-  Future<void> initialize(String assistantId) async {
+  Future<void> initialize(String assistantId, {WidgetSettings? widgetSettingOverride}) async {
     try {
       _assistantId = assistantId;
+      _widgetSettingOverride = widgetSettingOverride;
       _updateWidgetState(AssistantWidgetState.loading);
 
       // Set up socket message observer
