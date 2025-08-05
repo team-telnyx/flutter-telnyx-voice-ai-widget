@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:telnyx_webrtc/model/transcript_item.dart';
 import '../models/widget_theme.dart';
-import 'typing_indicator.dart';
 
 class MessageContent extends StatelessWidget {
   final TranscriptItem item;
@@ -17,20 +16,14 @@ class MessageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Show typing indicator for partial assistant messages
-    if (!isUser && item.isPartial == true) {
-      return TypingIndicator(
-        dotColor: theme.textColor,
-        dotSize: 6,
-        spacing: 3,
-      );
-    }
-
-    // Show regular text for all other messages
+    // Always show the message content, whether partial or complete
     return Text(
       item.content,
       style: TextStyle(
-        color: isUser ? Colors.white : theme.textColor,
+        // Slightly reduce opacity for partial messages to indicate they're still being received
+        color: (isUser ? Colors.white : theme.textColor).withValues(
+          alpha: item.isPartial == true ? 0.8 : 1.0,
+        ),
         fontSize: 14,
       ),
     );
