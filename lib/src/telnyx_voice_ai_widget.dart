@@ -88,6 +88,13 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
                 onClose: _widgetService.hideConversationOverlay,
                 onSendMessage: _widgetService.sendMessage,
                 avatarUrl: _widgetService.widgetSettings?.logoIconUrl,
+                settings: _widgetService.widgetSettings,
+                agentStatus: _widgetService.agentStatus,
+                isMuted: _widgetService.isMuted,
+                isCallActive: _widgetService.isCallActive,
+                audioLevels: _widgetService.inboundAudioLevels,
+                onToggleMute: _widgetService.toggleMute,
+                onEndCall: _widgetService.endCall,
               );
             });
           });

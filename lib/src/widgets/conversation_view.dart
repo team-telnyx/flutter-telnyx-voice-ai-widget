@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:telnyx_webrtc/model/transcript_item.dart';
+import 'package:telnyx_webrtc/telnyx_webrtc.dart';
 import '../models/widget_theme.dart';
+import '../models/agent_status.dart';
 import 'avatar_widget.dart';
 import 'message_content.dart';
+import 'expanded_widget.dart';
 
 /// Widget that displays the conversation transcript
 class ConversationView extends StatefulWidget {
@@ -12,6 +15,13 @@ class ConversationView extends StatefulWidget {
   final Function(String) onSendMessage;
   final bool isFullScreen;
   final String? avatarUrl;
+  final WidgetSettings? settings;
+  final AgentStatus agentStatus;
+  final bool isMuted;
+  final bool isCallActive;
+  final List<double> audioLevels;
+  final VoidCallback onToggleMute;
+  final VoidCallback onEndCall;
 
   const ConversationView({
     super.key,
@@ -21,6 +31,13 @@ class ConversationView extends StatefulWidget {
     required this.onSendMessage,
     this.isFullScreen = false,
     this.avatarUrl,
+    required this.settings,
+    required this.agentStatus,
+    required this.isMuted,
+    required this.isCallActive,
+    required this.audioLevels,
+    required this.onToggleMute,
+    required this.onEndCall,
   });
 
   @override
@@ -68,6 +85,12 @@ class _ConversationViewState extends State<ConversationView> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Fixed dimensions for ExpandedWidget
+    final expandedWidgetHeight = screenHeight * 0.25;
+    
     Widget content = Column(
       children: [
         // Header (only show when not in full screen mode)
@@ -101,7 +124,34 @@ class _ConversationViewState extends State<ConversationView> {
             ),
           ),
 
-        // Transcript
+        // ExpandedWidget at the top (25% of screen height)
+        Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: SizedBox(
+            height: expandedWidgetHeight,
+            child: ExpandedWidget(
+              width: screenWidth - 32, // Full width minus padding
+              height: expandedWidgetHeight,
+              theme: widget.theme,
+              settings: widget.settings,
+              agentStatus: widget.agentStatus,
+              isMuted: widget.isMuted,
+              isCallActive: widget.isCallActive,
+              audioLevels: widget.audioLevels,
+              onTap: () {}, // No action needed in conversation view
+              onToggleMute: widget.onToggleMute,
+              onEndCall: widget.onEndCall,
+            ),
+          ),
+        ),
+
+        // Divider between ExpandedWidget and chat
+        Divider(
+          color: widget.theme.borderColor,
+          height: 1,
+        ),
+
+        // Transcript (remaining 70% of screen)
         Expanded(
           child: ListView.builder(
             controller: _scrollController,

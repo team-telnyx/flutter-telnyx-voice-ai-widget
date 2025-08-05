@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:telnyx_webrtc/model/transcript_item.dart';
+import 'package:telnyx_webrtc/telnyx_webrtc.dart';
 import '../models/widget_theme.dart';
+import '../models/agent_status.dart';
 import 'conversation_view.dart';
 
 /// Full-screen conversation overlay that appears above everything else
@@ -11,6 +13,13 @@ class ConversationOverlay extends StatefulWidget {
   final VoidCallback onClose;
   final Function(String) onSendMessage;
   final String? avatarUrl;
+  final WidgetSettings? settings;
+  final AgentStatus agentStatus;
+  final bool isMuted;
+  final bool isCallActive;
+  final List<double> audioLevels;
+  final VoidCallback onToggleMute;
+  final VoidCallback onEndCall;
 
   const ConversationOverlay({
     super.key,
@@ -19,6 +28,13 @@ class ConversationOverlay extends StatefulWidget {
     required this.onClose,
     required this.onSendMessage,
     this.avatarUrl,
+    required this.settings,
+    required this.agentStatus,
+    required this.isMuted,
+    required this.isCallActive,
+    required this.audioLevels,
+    required this.onToggleMute,
+    required this.onEndCall,
   });
 
   @override
@@ -166,6 +182,13 @@ class _ConversationOverlayState extends State<ConversationOverlay>
                               onSendMessage: widget.onSendMessage,
                               isFullScreen: true,
                               avatarUrl: widget.avatarUrl,
+                              settings: widget.settings,
+                              agentStatus: widget.agentStatus,
+                              isMuted: widget.isMuted,
+                              isCallActive: widget.isCallActive,
+                              audioLevels: widget.audioLevels,
+                              onToggleMute: widget.onToggleMute,
+                              onEndCall: widget.onEndCall,
                             ),
                           ),
                         ],
