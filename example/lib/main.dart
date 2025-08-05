@@ -324,9 +324,9 @@ class _MyHomePageState extends State<MyHomePage> {
               const SizedBox(height: 16),
               Center(
                 child: TelnyxVoiceAiWidget(
+                  assistantId: _assistantId!,
                   height: _height!,
                   width: _width!,
-                  assistantId: _assistantId!,
                   expandedHeight: _expandedHeight,
                   expandedWidth: _expandedWidth,
                 ),

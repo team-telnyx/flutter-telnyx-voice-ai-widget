@@ -14,6 +14,9 @@ import 'widgets/error_widget.dart';
 
 /// Main Telnyx Voice AI Widget
 class TelnyxVoiceAiWidget extends StatefulWidget {
+  /// Assistant ID to connect to
+  final String assistantId;
+
   /// Height of the widget in collapsed state
   final double height;
   
@@ -26,9 +29,6 @@ class TelnyxVoiceAiWidget extends StatefulWidget {
   /// Width of the widget in expanded state
   final double? expandedWidth;
   
-  /// Assistant ID to connect to
-  final String assistantId;
-  
   /// Optional text styling for the start call text in collapsed state
   final TextStyle? startCallTextStyling;
   
@@ -40,9 +40,9 @@ class TelnyxVoiceAiWidget extends StatefulWidget {
 
   const TelnyxVoiceAiWidget({
     super.key,
+    required this.assistantId,
     required this.height,
     required this.width,
-    required this.assistantId,
     this.expandedHeight,
     this.expandedWidth,
     this.startCallTextStyling,
