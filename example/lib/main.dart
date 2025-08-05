@@ -329,6 +329,23 @@ class _MyHomePageState extends State<MyHomePage> {
                   width: _width!,
                   expandedHeight: _expandedHeight,
                   expandedWidth: _expandedWidth,
+                  /*startCallTextStyling: TextStyle(
+                    color: Colors.red,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  logoIconSettings: LogoIconSettings(
+                    avatarUrl: 'https://example.com/avatar.png',
+                    size: 12,
+                    borderRadius: 20,
+                    backgroundColor: Colors.blue.shade100,
+                    borderColor: Colors.blue.shade300,
+                    borderWidth: 2,
+                  ),
+                  widgetSettingOverride: WidgetSettings(
+                    startCallText: "Let's go!",
+                    logoIconUrl: 'https://example.com/logo.png',
+                  ),*/
                 ),
               ),
             ],
