@@ -184,6 +184,9 @@ class WidgetService extends ChangeNotifier {
         case SocketMethod.bye:
           debugPrint('📞 Call ended');
           _isCallActive = false;
+          
+          // Close conversation overlay if it's open
+          hideConversationOverlay();
 
           // clear transcript and audio levels when call ends
           _transcript.clear();
