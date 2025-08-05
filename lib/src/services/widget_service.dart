@@ -7,6 +7,7 @@ import 'package:telnyx_webrtc/model/socket_method.dart';
 import 'package:telnyx_webrtc/model/telnyx_message.dart';
 import 'package:telnyx_webrtc/model/transcript_item.dart';
 import 'package:telnyx_webrtc/telnyx_client.dart';
+import 'package:telnyx_webrtc/model/telnyx_socket_error.dart';
 import 'package:uuid/uuid.dart';
 import '../models/agent_status.dart';
 import '../models/widget_state.dart';
@@ -23,6 +24,7 @@ class WidgetService extends ChangeNotifier {
   List<TranscriptItem> _transcript = [];
   bool _isMuted = false;
   bool _isCallActive = false;
+  String? _assistantId;
   
   // Audio visualization data
   final List<double> _inboundAudioLevels = [];
@@ -59,6 +61,8 @@ class WidgetService extends ChangeNotifier {
   
   bool get isConversationVisible => _isConversationVisible;
   
+  String? get assistantId => _assistantId;
+  
   /// Gets the current processed audio levels for visualization (preferred)
   List<double> get inboundAudioLevels => List.unmodifiable(_processedAudioLevels.isNotEmpty ? _processedAudioLevels : _inboundAudioLevels);
   
@@ -71,6 +75,7 @@ class WidgetService extends ChangeNotifier {
   /// Initialize the widget with assistant ID
   Future<void> initialize(String assistantId) async {
     try {
+      _assistantId = assistantId;
       _updateWidgetState(AssistantWidgetState.loading);
 
       // Set up socket message observer
@@ -197,6 +202,12 @@ class WidgetService extends ChangeNotifier {
     _telnyxClient.onTranscriptUpdate = (List<TranscriptItem> transcriptItems) {
       _transcript = List.from(transcriptItems);
       notifyListeners();
+    };
+
+    // Handle socket errors
+    _telnyxClient.onSocketErrorReceived = (TelnyxSocketError error) {
+      debugPrint('❌ Socket error: ${error.errorMessage} (${error.errorCode})');
+      _updateWidgetState(AssistantWidgetState.error);
     };
   }
 

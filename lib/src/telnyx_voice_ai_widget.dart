@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:telnyx_webrtc/telnyx_webrtc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'models/widget_theme.dart';
 import 'models/widget_state.dart';
 import 'models/agent_status.dart';
@@ -362,29 +364,111 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
 
 
   Widget _buildErrorWidget() {
+    // Use expanded dimensions for error state as specified in requirements
+    final expandedWidth = widget.expandedWidth ?? widget.width;
+    final expandedHeight = widget.expandedHeight ?? (widget.height * 2);
+    
     return Container(
-      width: widget.width,
-      height: widget.height,
+      width: expandedWidth,
+      height: expandedHeight,
       decoration: BoxDecoration(
         color: _theme.backgroundColor,
-        borderRadius: BorderRadius.circular(widget.height / 2),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.red),
         boxShadow: [
           BoxShadow(
             color: _theme.shadowColor,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Center(
-        child: Icon(
-          Icons.error_outline,
-          color: Colors.red,
-          size: widget.height / 2,
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Error icon
+            Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: 48,
+            ),
+            const SizedBox(height: 16),
+            
+            // Title
+            Text(
+              'An error occurred',
+              style: TextStyle(
+                color: _theme.textColor,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            
+            // First error message
+            Text(
+              'Failed to initialize the Telnyx AI Agent client. Please check your agent ID and ensure that you are connected to the internet.',
+              style: TextStyle(
+                color: _theme.secondaryTextColor,
+                fontSize: 14,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            
+            // Second error message with link
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: TextStyle(
+                  color: _theme.secondaryTextColor,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+                children: [
+                  const TextSpan(
+                    text: 'Make sure that the ',
+                  ),
+                  TextSpan(
+                    text: 'Support Unauthenticated Web Calls',
+                    style: TextStyle(
+                      color: _theme.primaryColor,
+                      decoration: TextDecoration.underline,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () => _launchAssistantSettingsUrl(),
+                  ),
+                  const TextSpan(
+                    text: ' option is enabled in your Telnyx agent settings.',
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  /// Launch the Telnyx assistant settings URL
+  Future<void> _launchAssistantSettingsUrl() async {
+    final assistantId = _widgetService.assistantId;
+    if (assistantId == null) return;
+    
+    final url = 'https://portal.telnyx.com/#/ai/assistants/edit/$assistantId?tab=telephony';
+    
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('Error launching URL: $e');
+    }
   }
 
   Widget _buildDefaultAvatar() {
