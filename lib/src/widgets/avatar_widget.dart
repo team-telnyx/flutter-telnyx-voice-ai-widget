@@ -5,32 +5,60 @@ class AvatarWidget extends StatelessWidget {
   final String? avatarUrl;
   final double size;
   final double borderRadius;
+  final Color? backgroundColor;
+  final Color? borderColor;
+  final double? borderWidth;
+  final BoxFit? fit;
 
   const AvatarWidget({
     super.key,
     this.avatarUrl,
     required this.size,
     required this.borderRadius,
+    this.backgroundColor,
+    this.borderColor,
+    this.borderWidth,
+    this.fit,
   });
 
   @override
   Widget build(BuildContext context) {
+    Widget avatarContent;
+    
     if (avatarUrl?.isNotEmpty == true) {
-      return ClipRRect(
+      avatarContent = ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
         child: Image.network(
           avatarUrl!,
           width: size,
           height: size,
-          fit: BoxFit.cover,
+          fit: fit ?? BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return _buildDefaultAvatar();
           },
         ),
       );
     } else {
-      return _buildDefaultAvatar();
+      avatarContent = _buildDefaultAvatar();
     }
+
+    // Wrap with container for background color and border if specified
+    if (backgroundColor != null || borderColor != null || borderWidth != null) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(borderRadius),
+          border: borderColor != null && borderWidth != null
+              ? Border.all(color: borderColor!, width: borderWidth!)
+              : null,
+        ),
+        child: avatarContent,
+      );
+    }
+
+    return avatarContent;
   }
 
   Widget _buildDefaultAvatar() {
@@ -41,7 +69,7 @@ class AvatarWidget extends StatelessWidget {
         package: 'flutter_telnyx_voice_ai_widget',
         width: size,
         height: size,
-        fit: BoxFit.cover,
+        fit: fit ?? BoxFit.cover,
       ),
     );
   }

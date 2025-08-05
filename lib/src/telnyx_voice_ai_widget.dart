@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:telnyx_webrtc/telnyx_webrtc.dart';
 import 'models/widget_theme.dart';
 import 'models/widget_state.dart';
+import 'models/logo_icon_settings.dart';
 import 'services/widget_service.dart';
 import 'widgets/conversation_overlay.dart';
 import 'widgets/loading_widget.dart';
@@ -26,6 +28,15 @@ class TelnyxVoiceAiWidget extends StatefulWidget {
   
   /// Assistant ID to connect to
   final String assistantId;
+  
+  /// Optional text styling for the start call text in collapsed state
+  final TextStyle? startCallTextStyling;
+  
+  /// Optional settings for customizing the logo/avatar icon
+  final LogoIconSettings? logoIconSettings;
+  
+  /// Optional widget settings override that will override server-provided settings
+  final WidgetSettings? widgetSettingOverride;
 
   const TelnyxVoiceAiWidget({
     super.key,
@@ -34,6 +45,9 @@ class TelnyxVoiceAiWidget extends StatefulWidget {
     required this.assistantId,
     this.expandedHeight,
     this.expandedWidth,
+    this.startCallTextStyling,
+    this.logoIconSettings,
+    this.widgetSettingOverride,
   });
 
   @override
@@ -53,7 +67,7 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
   }
 
   void _initializeWidget() async {
-    await _widgetService.initialize(widget.assistantId);
+    await _widgetService.initialize(widget.assistantId, widgetSettingOverride: widget.widgetSettingOverride);
   }
 
   void _onWidgetServiceChanged() {
@@ -114,6 +128,8 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
               theme: _theme,
               settings: _widgetService.widgetSettings,
               onTap: _widgetService.startCall,
+              startCallTextStyling: widget.startCallTextStyling,
+              logoIconSettings: widget.logoIconSettings,
             );
           case AssistantWidgetState.connecting:
             return ConnectingWidget(

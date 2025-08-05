@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:telnyx_webrtc/telnyx_webrtc.dart';
 import '../models/widget_theme.dart';
+import '../models/logo_icon_settings.dart';
 import 'avatar_widget.dart';
 
 class CollapsedWidget extends StatelessWidget {
@@ -9,6 +10,8 @@ class CollapsedWidget extends StatelessWidget {
   final WidgetTheme theme;
   final WidgetSettings? settings;
   final VoidCallback onTap;
+  final TextStyle? startCallTextStyling;
+  final LogoIconSettings? logoIconSettings;
 
   const CollapsedWidget({
     super.key,
@@ -17,6 +20,8 @@ class CollapsedWidget extends StatelessWidget {
     required this.theme,
     required this.settings,
     required this.onTap,
+    this.startCallTextStyling,
+    this.logoIconSettings,
   });
 
   @override
@@ -46,11 +51,15 @@ class CollapsedWidget extends StatelessWidget {
           children: [
             // Avatar
             Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: logoIconSettings?.padding ?? const EdgeInsets.all(8.0),
               child: AvatarWidget(
-                avatarUrl: settings?.logoIconUrl,
-                size: height - 16,
-                borderRadius: (height - 16) / 2,
+                avatarUrl: logoIconSettings?.avatarUrl ?? settings?.logoIconUrl,
+                size: logoIconSettings?.size ?? (height - 16),
+                borderRadius: logoIconSettings?.borderRadius ?? ((logoIconSettings?.size ?? (height - 16)) / 2),
+                backgroundColor: logoIconSettings?.backgroundColor,
+                borderColor: logoIconSettings?.borderColor,
+                borderWidth: logoIconSettings?.borderWidth,
+                fit: logoIconSettings?.fit,
               ),
             ),
             
@@ -60,7 +69,7 @@ class CollapsedWidget extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Text(
                   startCallText,
-                  style: TextStyle(
+                  style: startCallTextStyling ?? TextStyle(
                     color: theme.textColor,
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
