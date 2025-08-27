@@ -6,7 +6,7 @@ repository: https://github.com/team-telnyx/flutter-telnyx-voice-ai-widget
 issue_tracker: https://github.com/team-telnyx/flutter-telnyx-voice-ai-widget/issues
 
 environment:
-  sdk: ^3.7.2
+  sdk: ^3.5.0
   flutter: ">=1.17.0"
 
 dependencies:
