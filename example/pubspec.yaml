@@ -3,7 +3,7 @@ description: Example app for flutter_telnyx_voice_ai_widget
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.7.2
+  sdk: ^3.5.0
   flutter: ">=1.17.0"
 
 dependencies:
