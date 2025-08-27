@@ -21,8 +21,8 @@ class MessageContent extends StatelessWidget {
       item.content,
       style: TextStyle(
         // Slightly reduce opacity for partial messages to indicate they're still being received
-        color: (isUser ? Colors.white : theme.textColor).withValues(
-          alpha: item.isPartial == true ? 0.8 : 1.0,
+        color: (isUser ? Colors.white : theme.textColor).withOpacity(
+          item.isPartial == true ? 0.8 : 1.0,
         ),
         fontSize: 14,
       ),
