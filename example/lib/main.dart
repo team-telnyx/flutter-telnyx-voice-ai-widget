@@ -236,7 +236,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           });
                         },
                       ),
-                      const Text('Regular Mode'),
+                      const Text('Regular'),
                       const SizedBox(width: 16),
                       Radio<bool>(
                         value: true,
@@ -247,7 +247,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           });
                         },
                       ),
-                      const Text('Icon Only Mode'),
+                      const Text('Icon Only'),
                     ],
                   ),
                 ),
