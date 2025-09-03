@@ -5,6 +5,7 @@ A Flutter widget that provides a standalone voice AI assistant interface using t
 ## Features
 
 - **Configurable Dimensions**: Set custom height and width for the widget
+- **Icon-Only Mode**: Floating action button-style interface for minimal UI footprint
 - **Multiple UI States**: 
   - Collapsed (initial state)
   - Connecting (during call setup)
@@ -33,6 +34,8 @@ dependencies:
 
 ### Basic Usage
 
+#### Regular Mode
+
 ```dart
 import 'package:flutter/material.dart';
 import 'package:flutter_telnyx_voice_ai_widget/flutter_telnyx_voice_ai_widget.dart';
@@ -55,14 +58,55 @@ class MyApp extends StatelessWidget {
 }
 ```
 
+#### Icon-Only Mode
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_telnyx_voice_ai_widget/flutter_telnyx_voice_ai_widget.dart';
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        floatingActionButton: TelnyxVoiceAiWidget(
+          assistantId: 'your-assistant-id',
+          iconOnlySettings: IconOnlySettings(
+            size: 56.0,
+            logoIconSettings: LogoIconSettings(
+              size: 40.0,
+              borderRadius: 20.0,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+```
+
 ### Widget Parameters
 
-- `height` (required): The height of the widget in its collapsed state
-- `width` (required): The width of the widget
+#### Regular Mode Parameters
+- `height` (required for regular mode): The height of the widget in its collapsed state
+- `width` (required for regular mode): The width of the widget
 - `assistantId` (required): The ID of the AI assistant to connect to
+- `expandedHeight` (optional): The height of the widget in its expanded state
+- `expandedWidth` (optional): The width of the widget in its expanded state
+- `startCallTextStyling` (optional): Text styling for the start call text in collapsed state
+- `logoIconSettings` (optional): Settings for customizing the logo/avatar icon
+- `widgetSettingOverride` (optional): Widget settings override
+
+#### Icon-Only Mode Parameters
+- `assistantId` (required): The ID of the AI assistant to connect to
+- `iconOnlySettings` (required for icon-only mode): Configuration for icon-only mode
+  - `size` (required): Size of the circular icon widget
+  - `logoIconSettings` (optional): Settings for customizing the logo/avatar icon
+  - `widgetSettingOverride` (optional): Widget settings override
 
 ### Widget States
 
+#### Regular Mode States
 The widget automatically transitions between different states:
 
 1. **Loading**: Shows a loading indicator while initializing
@@ -71,6 +115,15 @@ The widget automatically transitions between different states:
 4. **Expanded**: Active call state with audio visualizer and controls
 5. **Conversation**: Full transcript view with message history
 6. **Error**: Error state if something goes wrong
+
+#### Icon-Only Mode Behavior
+In icon-only mode, the widget behavior is simplified:
+
+1. **Loading**: Shows a loading indicator in circular form
+2. **Normal State**: Shows the icon in a circular container with theme-based background
+3. **Error State**: Shows a red warning icon in a circular container
+4. **No Expanded State**: Tapping the icon immediately starts the call and opens the conversation overlay
+5. **Error Handling**: Tapping the error icon opens the error display overlay
 
 ### Theming
 
@@ -137,12 +190,18 @@ lib/
 │   ├── models/
 │   │   ├── agent_status.dart      # Agent status enum
 │   │   ├── widget_state.dart      # Widget state enum
-│   │   └── widget_theme.dart      # Theme configuration
+│   │   ├── widget_theme.dart      # Theme configuration
+│   │   ├── logo_icon_settings.dart # Logo/avatar customization settings
+│   │   └── icon_only_settings.dart # Icon-only mode configuration
 │   ├── services/
 │   │   └── widget_service.dart    # Main service for Telnyx integration
 │   ├── widgets/
 │   │   ├── audio_visualizer.dart  # Animated audio visualizer
-│   │   └── conversation_view.dart # Conversation transcript view
+│   │   ├── conversation_view.dart # Conversation transcript view
+│   │   ├── collapsed_widget.dart  # Regular collapsed state widget
+│   │   ├── expanded_widget.dart   # Regular expanded state widget
+│   │   ├── icon_only_widget.dart  # Icon-only mode widget
+│   │   └── error_widget.dart      # Error display widget
 │   └── telnyx_voice_ai_widget.dart # Main widget
 └── flutter_telnyx_voice_ai_widget.dart # Library exports
 ```
