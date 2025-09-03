@@ -37,13 +37,16 @@ class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _expandedWidthController = TextEditingController();
   final TextEditingController _expandedHeightController = TextEditingController();
+  final TextEditingController _iconSizeController = TextEditingController();
   
   String? _assistantId;
   double? _width;
   double? _height;
   double? _expandedWidth;
   double? _expandedHeight;
+  double? _iconSize;
   bool _showWidget = false;
+  bool _iconOnlyMode = false;
 
   @override
   void initState() {
@@ -53,6 +56,7 @@ class _MyHomePageState extends State<MyHomePage> {
     _heightController.text = '60';
     _expandedWidthController.text = '400';
     _expandedHeightController.text = '300';
+    _iconSizeController.text = '56';
     _requestPermissions();
   }
   
@@ -87,15 +91,12 @@ class _MyHomePageState extends State<MyHomePage> {
     _heightController.dispose();
     _expandedWidthController.dispose();
     _expandedHeightController.dispose();
+    _iconSizeController.dispose();
     super.dispose();
   }
 
   void _createWidget() {
     final assistantId = _assistantIdController.text.trim();
-    final widthText = _widthController.text.trim();
-    final heightText = _heightController.text.trim();
-    final expandedWidthText = _expandedWidthController.text.trim();
-    final expandedHeightText = _expandedHeightController.text.trim();
     
     if (assistantId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -104,48 +105,73 @@ class _MyHomePageState extends State<MyHomePage> {
       return;
     }
     
-    final width = double.tryParse(widthText);
-    final height = double.tryParse(heightText);
-    
-    if (width == null || height == null || width <= 0 || height <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter valid width and height')),
-      );
-      return;
-    }
-    
-    // Parse expanded dimensions (optional)
-    double? expandedWidth;
-    double? expandedHeight;
-    
-    if (expandedWidthText.isNotEmpty) {
-      expandedWidth = double.tryParse(expandedWidthText);
-      if (expandedWidth == null || expandedWidth <= 0) {
+    if (_iconOnlyMode) {
+      // Icon-only mode validation
+      final iconSizeText = _iconSizeController.text.trim();
+      final iconSize = double.tryParse(iconSizeText);
+      
+      if (iconSize == null || iconSize <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter valid expanded width')),
+          const SnackBar(content: Text('Please enter valid icon size')),
         );
         return;
       }
-    }
-    
-    if (expandedHeightText.isNotEmpty) {
-      expandedHeight = double.tryParse(expandedHeightText);
-      if (expandedHeight == null || expandedHeight <= 0) {
+      
+      setState(() {
+        _assistantId = assistantId;
+        _iconSize = iconSize;
+        _showWidget = true;
+      });
+    } else {
+      // Regular mode validation
+      final widthText = _widthController.text.trim();
+      final heightText = _heightController.text.trim();
+      final expandedWidthText = _expandedWidthController.text.trim();
+      final expandedHeightText = _expandedHeightController.text.trim();
+      
+      final width = double.tryParse(widthText);
+      final height = double.tryParse(heightText);
+      
+      if (width == null || height == null || width <= 0 || height <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter valid expanded height')),
+          const SnackBar(content: Text('Please enter valid width and height')),
         );
         return;
       }
+      
+      // Parse expanded dimensions (optional)
+      double? expandedWidth;
+      double? expandedHeight;
+      
+      if (expandedWidthText.isNotEmpty) {
+        expandedWidth = double.tryParse(expandedWidthText);
+        if (expandedWidth == null || expandedWidth <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please enter valid expanded width')),
+          );
+          return;
+        }
+      }
+      
+      if (expandedHeightText.isNotEmpty) {
+        expandedHeight = double.tryParse(expandedHeightText);
+        if (expandedHeight == null || expandedHeight <= 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please enter valid expanded height')),
+          );
+          return;
+        }
+      }
+      
+      setState(() {
+        _assistantId = assistantId;
+        _width = width;
+        _height = height;
+        _expandedWidth = expandedWidth;
+        _expandedHeight = expandedHeight;
+        _showWidget = true;
+      });
     }
-    
-    setState(() {
-      _assistantId = assistantId;
-      _width = width;
-      _height = height;
-      _expandedWidth = expandedWidth;
-      _expandedHeight = expandedHeight;
-      _showWidget = true;
-    });
   }
 
   @override
@@ -187,8 +213,73 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             const SizedBox(height: 16),
             
-            // Width and Height inputs
+            // Mode selection
             Row(
+              children: [
+                const Text(
+                  'Widget Mode:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Radio<bool>(
+                        value: false,
+                        groupValue: _iconOnlyMode,
+                        onChanged: (value) {
+                          setState(() {
+                            _iconOnlyMode = value!;
+                          });
+                        },
+                      ),
+                      const Text('Regular Mode'),
+                      const SizedBox(width: 16),
+                      Radio<bool>(
+                        value: true,
+                        groupValue: _iconOnlyMode,
+                        onChanged: (value) {
+                          setState(() {
+                            _iconOnlyMode = value!;
+                          });
+                        },
+                      ),
+                      const Text('Icon Only Mode'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // Icon size input (only for icon-only mode)
+            if (_iconOnlyMode) ...[
+              const Text(
+                'Icon Size:',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _iconSizeController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'e.g. 56',
+                  helperText: 'Size of the circular icon widget',
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            
+            // Width and Height inputs (only for regular mode)
+            if (!_iconOnlyMode) ...[
+              Row(
               children: [
                 Expanded(
                   child: Column(
@@ -293,6 +384,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ],
             ),
+            ],
             const SizedBox(height: 24),
             
             // Create Widget button
@@ -311,42 +403,56 @@ class _MyHomePageState extends State<MyHomePage> {
             const SizedBox(height: 32),
             
             // Show widget if created
-            if (_showWidget && _assistantId != null && _width != null && _height != null) ...[
+            if (_showWidget && _assistantId != null) ...[
               const Divider(),
               const SizedBox(height: 16),
-              const Text(
-                'Your Voice AI Widget:',
-                style: TextStyle(
+              Text(
+                _iconOnlyMode ? 'Your Voice AI Widget (Icon Only Mode):' : 'Your Voice AI Widget (Regular Mode):',
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 16),
               Center(
-                child: TelnyxVoiceAiWidget(
-                  assistantId: _assistantId!,
-                  height: _height!,
-                  width: _width!,
-                  expandedHeight: _expandedHeight,
-                  expandedWidth: _expandedWidth,
-                  /*startCallTextStyling: TextStyle(
-                    color: Colors.red,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  logoIconSettings: LogoIconSettings(
-                    avatarUrl: 'https://example.com/avatar.png',
-                    size: 12,
-                    borderRadius: 20,
-                    backgroundColor: Colors.blue.shade100,
-                    borderColor: Colors.blue.shade300,
-                    borderWidth: 2,
-                  ),
-                  widgetSettingOverride: WidgetSettings(
-                    startCallText: "Let's go!",
-                    logoIconUrl: 'https://example.com/logo.png',
-                  ),*/
-                ),
+                child: _iconOnlyMode
+                    ? TelnyxVoiceAiWidget(
+                        assistantId: _assistantId!,
+                        iconOnlySettings: IconOnlySettings(
+                          size: _iconSize!,
+                          logoIconSettings: LogoIconSettings(
+                            size: _iconSize! * 0.6, // Icon size is 60% of widget size
+                            borderRadius: _iconSize! / 2, // Circular
+                            backgroundColor: Colors.blue.shade100,
+                            borderColor: Colors.blue.shade300,
+                            borderWidth: 2,
+                          ),
+                        ),
+                      )
+                    : TelnyxVoiceAiWidget(
+                        assistantId: _assistantId!,
+                        height: _height!,
+                        width: _width!,
+                        expandedHeight: _expandedHeight,
+                        expandedWidth: _expandedWidth,
+                        /*startCallTextStyling: TextStyle(
+                          color: Colors.red,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        logoIconSettings: LogoIconSettings(
+                          avatarUrl: 'https://example.com/avatar.png',
+                          size: 12,
+                          borderRadius: 20,
+                          backgroundColor: Colors.blue.shade100,
+                          borderColor: Colors.blue.shade300,
+                          borderWidth: 2,
+                        ),
+                        widgetSettingOverride: WidgetSettings(
+                          startCallText: "Let's go!",
+                          logoIconUrl: 'https://example.com/logo.png',
+                        ),*/
+                      ),
               ),
             ],
             
@@ -373,11 +479,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   SizedBox(height: 8),
                   Text(
                     '1. Enter your assistant ID\n'
-                    '2. Set width and height for the collapsed widget\n'
-                    '3. Optionally set expanded dimensions (defaults to 2x height)\n'
-                    '4. Click "Create Widget" to display the voice AI widget\n'
-                    '5. Tap the widget to start a voice conversation\n'
-                    '6. Widget expands during calls, conversation view is full screen',
+                    '2. Choose between Regular Mode or Icon Only Mode\n'
+                    '3. For Regular Mode: Set width/height and optional expanded dimensions\n'
+                    '4. For Icon Only Mode: Set the icon size (e.g., 56 for FAB-style)\n'
+                    '5. Click "Create Widget" to display the voice AI widget\n'
+                    '6. Tap the widget to start a voice conversation\n'
+                    '7. Regular mode expands during calls, Icon Only mode goes full screen immediately\n'
+                    '8. Icon Only mode shows red warning icon on errors',
                     style: TextStyle(color: Colors.blue),
                   ),
                 ],
