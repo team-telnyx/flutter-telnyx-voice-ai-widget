@@ -121,9 +121,10 @@ In icon-only mode, the widget behavior is simplified:
 
 1. **Loading**: Shows a loading indicator in circular form
 2. **Normal State**: Shows the icon in a circular container with theme-based background
-3. **Error State**: Shows a red warning icon in a circular container
-4. **No Expanded State**: Tapping the icon immediately starts the call and opens the conversation overlay
-5. **Error Handling**: Tapping the error icon opens the error display overlay
+3. **Connecting State**: Shows a loading indicator while establishing the call connection
+4. **Error State**: Shows a red warning icon in a circular container
+5. **Call Flow**: Tapping the icon shows a loading indicator until the call is answered, then opens the conversation overlay
+6. **Error Handling**: Tapping the error icon opens an error dialog instead of an overlay
 
 ### Theming
 

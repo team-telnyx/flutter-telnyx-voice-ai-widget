@@ -13,6 +13,7 @@ import 'widgets/connecting_widget.dart';
 import 'widgets/expanded_widget.dart';
 import 'widgets/error_widget.dart';
 import 'widgets/icon_only_widget.dart';
+import 'widgets/icon_only_loading_widget.dart';
 
 /// Main Telnyx Voice AI Widget
 class TelnyxVoiceAiWidget extends StatefulWidget {
@@ -103,20 +104,58 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
   /// Handle tap in icon-only mode
   void _handleIconOnlyTap() {
     if (_widgetService.widgetState == AssistantWidgetState.error) {
-      // Show error overlay directly
-      _widgetService.createConversationOverlay(context, () {
-        return ErrorDisplayWidget(
-          width: MediaQuery.of(context).size.width * 0.8,
-          height: MediaQuery.of(context).size.height * 0.6,
-          theme: _theme,
-          onLaunchUrl: _launchAssistantSettingsUrl,
-        );
-      });
+      // Show error dialog instead of overlay
+      _showErrorDialog();
     } else {
-      // Start call and immediately show conversation overlay
-      _widgetService.startCall();
-      _widgetService.showConversationOverlay();
+      // Start call in icon-only mode (will show loading indicator until answered)
+      _widgetService.startIconOnlyCall();
     }
+  }
+  
+  /// Show error dialog for icon-only mode
+  void _showErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+              maxHeight: MediaQuery.of(context).size.height * 0.6,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Close button
+                Align(
+                  alignment: Alignment.topRight,
+                  child: IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(
+                      Icons.close,
+                      color: _theme.textColor,
+                    ),
+                  ),
+                ),
+                // Error widget content
+                Flexible(
+                  child: ErrorDisplayWidget(
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    height: MediaQuery.of(context).size.height * 0.5,
+                    theme: _theme,
+                    onLaunchUrl: _launchAssistantSettingsUrl,
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -151,13 +190,12 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
           final iconOnlySettings = widget.iconOnlySettings!;
           final logoIconSettings = iconOnlySettings.logoIconSettings ?? widget.logoIconSettings;
           
-          // In icon-only mode, we only show the icon widget regardless of state
-          // except for loading state
-          if (_widgetService.widgetState == AssistantWidgetState.loading) {
-            return LoadingWidget(
-              width: iconOnlySettings.size,
-              height: iconOnlySettings.size,
+          // Show loading widget during initial loading or when connecting
+          if (_widgetService.widgetState == AssistantWidgetState.loading || _widgetService.isIconOnlyConnecting) {
+            return IconOnlyLoadingWidget(
+              size: iconOnlySettings.size,
               theme: _theme,
+              logoIconSettings: logoIconSettings,
             );
           }
           
