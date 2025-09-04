@@ -416,43 +416,47 @@ class _MyHomePageState extends State<MyHomePage> {
               const SizedBox(height: 16),
               Center(
                 child: _iconOnlyMode
-                    ? TelnyxVoiceAiWidget(
-                        assistantId: _assistantId!,
-                        iconOnlySettings: IconOnlySettings(
-                          size: _iconSize!,
-                          logoIconSettings: LogoIconSettings(
-                            size: _iconSize! * 0.6, // Icon size is 60% of widget size
-                            borderRadius: _iconSize! / 2, // Circular
-                            backgroundColor: Colors.blue.shade100,
-                            borderColor: Colors.blue.shade300,
-                            borderWidth: 2,
-                          ),
-                        ),
-                      )
-                    : TelnyxVoiceAiWidget(
-                        assistantId: _assistantId!,
-                        height: _height!,
-                        width: _width!,
-                        expandedHeight: _expandedHeight,
-                        expandedWidth: _expandedWidth,
-                        /*startCallTextStyling: TextStyle(
-                          color: Colors.red,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        logoIconSettings: LogoIconSettings(
-                          avatarUrl: 'https://example.com/avatar.png',
-                          size: 12,
-                          borderRadius: 20,
-                          backgroundColor: Colors.blue.shade100,
-                          borderColor: Colors.blue.shade300,
-                          borderWidth: 2,
-                        ),
-                        widgetSettingOverride: WidgetSettings(
-                          startCallText: "Let's go!",
-                          logoIconUrl: 'https://example.com/logo.png',
-                        ),*/
-                      ),
+                    ? (_iconSize != null
+                        ? TelnyxVoiceAiWidget(
+                            assistantId: _assistantId!,
+                            iconOnlySettings: IconOnlySettings(
+                              size: _iconSize!,
+                              logoIconSettings: LogoIconSettings(
+                                size: _iconSize! * 0.6, // Icon size is 60% of widget size
+                                borderRadius: _iconSize! / 2, // Circular
+                                backgroundColor: Colors.blue.shade100,
+                                borderColor: Colors.blue.shade300,
+                                borderWidth: 2,
+                              ),
+                            ),
+                          )
+                        : const Text('Please create widget with icon-only mode selected'))
+                    : (_width != null && _height != null
+                        ? TelnyxVoiceAiWidget(
+                            assistantId: _assistantId!,
+                            height: _height!,
+                            width: _width!,
+                            expandedHeight: _expandedHeight,
+                            expandedWidth: _expandedWidth,
+                            /*startCallTextStyling: TextStyle(
+                              color: Colors.red,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            logoIconSettings: LogoIconSettings(
+                              avatarUrl: 'https://example.com/avatar.png',
+                              size: 12,
+                              borderRadius: 20,
+                              backgroundColor: Colors.blue.shade100,
+                              borderColor: Colors.blue.shade300,
+                              borderWidth: 2,
+                            ),
+                            widgetSettingOverride: WidgetSettings(
+                              startCallText: "Let's go!",
+                              logoIconUrl: 'https://example.com/logo.png',
+                            ),*/
+                          )
+                        : const Text('Please create widget with regular mode selected')),
               ),
             ],
             
