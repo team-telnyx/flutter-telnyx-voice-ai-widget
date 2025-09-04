@@ -5,7 +5,7 @@ import '../models/widget_theme.dart';
 import '../models/agent_status.dart';
 import 'avatar_widget.dart';
 import 'message_content.dart';
-import 'expanded_widget.dart';
+import 'compact_call_widget.dart';
 
 /// Widget that displays the conversation transcript
 class ConversationView extends StatefulWidget {
@@ -85,73 +85,22 @@ class _ConversationViewState extends State<ConversationView> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
-    
-    // Fixed dimensions for ExpandedWidget
-    final expandedWidgetHeight = screenHeight * 0.25;
-    
     Widget content = Column(
       children: [
-        // Header (only show when not in full screen mode)
-        if (!widget.isFullScreen)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: widget.theme.borderColor, width: 1),
-              ),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  'Conversation',
-                  style: TextStyle(
-                    color: widget.theme.textColor,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: widget.onClose,
-                  icon: Icon(
-                    Icons.close,
-                    color: widget.theme.secondaryTextColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-        // ExpandedWidget at the top (25% of screen height)
-        Padding(
-          padding: const EdgeInsets.only(top: 8.0),
-          child: SizedBox(
-            height: expandedWidgetHeight,
-            child: ExpandedWidget(
-              width: screenWidth - 32, // Full width minus padding
-              height: expandedWidgetHeight,
-              theme: widget.theme,
-              settings: widget.settings,
-              agentStatus: widget.agentStatus,
-              isMuted: widget.isMuted,
-              isCallActive: widget.isCallActive,
-              audioLevels: widget.audioLevels,
-              onTap: () {}, // No action needed in conversation view
-              onToggleMute: widget.onToggleMute,
-              onEndCall: widget.onEndCall,
-            ),
-          ),
+        // Compact call widget at the top
+        CompactCallWidget(
+          theme: widget.theme,
+          settings: widget.settings,
+          agentStatus: widget.agentStatus,
+          isMuted: widget.isMuted,
+          isCallActive: widget.isCallActive,
+          audioLevels: widget.audioLevels,
+          onClose: widget.onClose,
+          onToggleMute: widget.onToggleMute,
+          onEndCall: widget.onEndCall,
         ),
 
-        // Divider between ExpandedWidget and chat
-        Divider(
-          color: widget.theme.borderColor,
-          height: 1,
-        ),
-
-        // Transcript (remaining 70% of screen)
+        // Transcript (takes remaining space)
         Expanded(
           child: ListView.builder(
             controller: _scrollController,

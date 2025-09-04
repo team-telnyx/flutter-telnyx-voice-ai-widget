@@ -134,45 +134,6 @@ class _ConversationOverlayState extends State<ConversationOverlay>
                     child: SafeArea(
                       child: Column(
                         children: [
-                          // Handle bar
-                          Container(
-                            width: 40,
-                            height: 4,
-                            margin: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: widget.theme.borderColor,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          
-                          // Header
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Conversation',
-                                  style: TextStyle(
-                                    color: widget.theme.textColor,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: _close,
-                                  icon: Icon(
-                                    Icons.close,
-                                    color: widget.theme.textColor,
-                                    size: 24,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          const Divider(height: 1),
-                          
                           // Conversation content
                           Expanded(
                             child: ConversationView(
