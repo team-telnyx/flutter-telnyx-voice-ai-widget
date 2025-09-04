@@ -1,16 +1,34 @@
-# example
+# Telnyx Voice AI Widget Example
 
-A new Flutter project.
+This example demonstrates how to use the Flutter Telnyx Voice AI Widget in both regular and icon-only modes.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+The example app provides:
+- **Interactive Configuration**: Adjust widget dimensions and mode in real-time
+- **Mode Selection**: Toggle between regular mode and icon-only (FAB-style) mode
+- **Live Preview**: See the configured widget immediately after creation
+- **Dimension Controls**: Set custom width, height, and expanded dimensions
+- **Permissions Handling**: Automatic microphone permission request
 
-A few resources to get you started if this is your first Flutter project:
+## Running the Example
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+cd example
+flutter run
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Usage
+
+1. Enter your Telnyx Assistant ID
+2. Choose between Regular or Icon-Only mode:
+   - **Regular Mode**: Configure width, height, and optional expanded dimensions
+   - **Icon-Only Mode**: Configure the icon size for a floating action button style
+3. Click "Create Widget" to display the voice AI assistant
+4. Tap the widget to start a voice conversation
+
+## Requirements
+
+- Valid Telnyx Assistant ID
+- Microphone permissions (requested automatically)
+- Active internet connection

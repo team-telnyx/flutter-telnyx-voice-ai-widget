@@ -189,23 +189,50 @@ This widget integrates with the Telnyx WebRTC SDK to provide:
 lib/
 ├── src/
 │   ├── models/
-│   │   ├── agent_status.dart      # Agent status enum
-│   │   ├── widget_state.dart      # Widget state enum
-│   │   ├── widget_theme.dart      # Theme configuration
-│   │   ├── logo_icon_settings.dart # Logo/avatar customization settings
-│   │   └── icon_only_settings.dart # Icon-only mode configuration
+│   │   ├── agent_status.dart        # Agent status enum (idle, thinking, waiting)
+│   │   ├── widget_state.dart        # Widget state enum
+│   │   ├── widget_theme.dart        # Theme configuration (light/dark)
+│   │   ├── logo_icon_settings.dart  # Logo/avatar customization settings
+│   │   └── icon_only_settings.dart  # Icon-only mode configuration
 │   ├── services/
-│   │   └── widget_service.dart    # Main service for Telnyx integration
+│   │   └── widget_service.dart      # Main service for Telnyx WebRTC integration
 │   ├── widgets/
-│   │   ├── audio_visualizer.dart  # Animated audio visualizer
-│   │   ├── conversation_view.dart # Conversation transcript view
-│   │   ├── collapsed_widget.dart  # Regular collapsed state widget
-│   │   ├── expanded_widget.dart   # Regular expanded state widget
-│   │   ├── icon_only_widget.dart  # Icon-only mode widget
-│   │   └── error_widget.dart      # Error display widget
-│   └── telnyx_voice_ai_widget.dart # Main widget
-└── flutter_telnyx_voice_ai_widget.dart # Library exports
+│   │   ├── audio_visualizer.dart    # Animated audio visualizer with gradients
+│   │   ├── avatar_widget.dart       # Reusable avatar display component
+│   │   ├── collapsed_widget.dart    # Regular mode collapsed state
+│   │   ├── compact_call_widget.dart # Compact call controls for conversation view
+│   │   ├── connecting_widget.dart   # Connection loading state
+│   │   ├── control_button.dart      # Reusable control button component
+│   │   ├── conversation_view.dart   # Full transcript view with compact controls
+│   │   ├── error_display_widget.dart # Error state display
+│   │   ├── expanded_widget.dart     # Regular mode expanded state with visualizer
+│   │   ├── icon_only_widget.dart    # Icon-only mode implementation
+│   │   ├── loading_widget.dart      # Initial loading state
+│   │   └── message_content.dart     # Message bubble content renderer
+│   └── telnyx_voice_ai_widget.dart  # Main widget controller
+└── flutter_telnyx_voice_ai_widget.dart # Public API exports
 ```
+
+### Key Components
+
+#### Regular Mode Flow
+1. **LoadingWidget**: Shows loading indicator during initialization
+2. **CollapsedWidget**: Displays avatar and call-to-action text
+3. **ConnectingWidget**: Shows connection progress
+4. **ExpandedWidget**: Active call with audio visualizer and controls
+5. **ConversationView**: Full transcript with CompactCallWidget header
+
+#### Icon-Only Mode Flow
+1. **IconOnlyWidget**: Circular FAB-style button
+2. On tap: Shows loading indicator
+3. On connect: Opens full-screen conversation overlay
+4. On error: Shows red warning icon, tap for error dialog
+
+#### Conversation View Features
+- **CompactCallWidget**: Horizontal header with close button, mini visualizer, status text, and call controls
+- **Transcript Display**: Scrollable message history with user/assistant bubbles
+- **Message Input**: Text field for sending messages during conversation
+- **Auto-scroll**: Automatically scrolls to latest messages
 
 ### Building
 
