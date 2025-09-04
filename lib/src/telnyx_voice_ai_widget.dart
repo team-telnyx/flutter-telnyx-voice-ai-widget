@@ -4,6 +4,7 @@ import 'package:telnyx_webrtc/telnyx_webrtc.dart';
 import 'models/widget_theme.dart';
 import 'models/widget_state.dart';
 import 'models/logo_icon_settings.dart';
+import 'models/icon_only_settings.dart';
 import 'services/widget_service.dart';
 import 'widgets/conversation_overlay.dart';
 import 'widgets/loading_widget.dart';
@@ -11,25 +12,27 @@ import 'widgets/collapsed_widget.dart';
 import 'widgets/connecting_widget.dart';
 import 'widgets/expanded_widget.dart';
 import 'widgets/error_widget.dart';
+import 'widgets/icon_only_widget.dart';
+import 'widgets/icon_only_loading_widget.dart';
 
 /// Main Telnyx Voice AI Widget
 class TelnyxVoiceAiWidget extends StatefulWidget {
   /// Assistant ID to connect to
   final String assistantId;
 
-  /// Height of the widget in collapsed state
-  final double height;
+  /// Height of the widget in collapsed state (ignored in iconOnly mode)
+  final double? height;
   
-  /// Width of the widget in collapsed state
-  final double width;
+  /// Width of the widget in collapsed state (ignored in iconOnly mode)
+  final double? width;
   
-  /// Height of the widget in expanded state
+  /// Height of the widget in expanded state (ignored in iconOnly mode)
   final double? expandedHeight;
   
-  /// Width of the widget in expanded state
+  /// Width of the widget in expanded state (ignored in iconOnly mode)
   final double? expandedWidth;
   
-  /// Optional text styling for the start call text in collapsed state
+  /// Optional text styling for the start call text in collapsed state (ignored in iconOnly mode)
   final TextStyle? startCallTextStyling;
   
   /// Optional settings for customizing the logo/avatar icon
@@ -38,17 +41,24 @@ class TelnyxVoiceAiWidget extends StatefulWidget {
   /// Optional widget settings override that will override server-provided settings
   final WidgetSettings? widgetSettingOverride;
 
+  /// Configuration for icon-only mode. When provided, the widget will render as a floating action button-style icon
+  final IconOnlySettings? iconOnlySettings;
+
   const TelnyxVoiceAiWidget({
     super.key,
     required this.assistantId,
-    required this.height,
-    required this.width,
+    this.height,
+    this.width,
     this.expandedHeight,
     this.expandedWidth,
     this.startCallTextStyling,
     this.logoIconSettings,
     this.widgetSettingOverride,
-  });
+    this.iconOnlySettings,
+  }) : assert(
+         (iconOnlySettings != null) || (height != null && width != null),
+         'Either iconOnlySettings must be provided, or both height and width must be provided for regular mode',
+       );
 
   @override
   State<TelnyxVoiceAiWidget> createState() => _TelnyxVoiceAiWidgetState();
@@ -57,6 +67,9 @@ class TelnyxVoiceAiWidget extends StatefulWidget {
 class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
   late final WidgetService _widgetService;
   WidgetTheme _theme = WidgetTheme.light;
+
+  /// Check if the widget is in icon-only mode
+  bool get _isIconOnlyMode => widget.iconOnlySettings != null;
 
   @override
   void initState() {
@@ -67,7 +80,8 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
   }
 
   void _initializeWidget() async {
-    await _widgetService.initialize(widget.assistantId, widgetSettingOverride: widget.widgetSettingOverride);
+    final widgetSettingOverride = widget.iconOnlySettings?.widgetSettingOverride ?? widget.widgetSettingOverride;
+    await _widgetService.initialize(widget.assistantId, widgetSettingOverride: widgetSettingOverride);
   }
 
   void _onWidgetServiceChanged() {
@@ -85,6 +99,63 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
     _widgetService.removeListener(_onWidgetServiceChanged);
     _widgetService.dispose();
     super.dispose();
+  }
+
+  /// Handle tap in icon-only mode
+  void _handleIconOnlyTap() {
+    if (_widgetService.widgetState == AssistantWidgetState.error) {
+      // Show error dialog instead of overlay
+      _showErrorDialog();
+    } else {
+      // Start call in icon-only mode (will show loading indicator until answered)
+      _widgetService.startIconOnlyCall();
+    }
+  }
+  
+  /// Show error dialog for icon-only mode
+  void _showErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+              maxHeight: MediaQuery.of(context).size.height * 0.6,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Close button
+                Align(
+                  alignment: Alignment.topRight,
+                  child: IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(
+                      Icons.close,
+                      color: _theme.textColor,
+                    ),
+                  ),
+                ),
+                // Error widget content
+                Flexible(
+                  child: ErrorDisplayWidget(
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    height: MediaQuery.of(context).size.height * 0.5,
+                    theme: _theme,
+                    onLaunchUrl: _launchAssistantSettingsUrl,
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -114,17 +185,42 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
           });
         }
         
+        // Handle icon-only mode
+        if (_isIconOnlyMode) {
+          final iconOnlySettings = widget.iconOnlySettings!;
+          final logoIconSettings = iconOnlySettings.logoIconSettings ?? widget.logoIconSettings;
+          
+          // Show loading widget during initial loading or when connecting
+          if (_widgetService.widgetState == AssistantWidgetState.loading || _widgetService.isIconOnlyConnecting) {
+            return IconOnlyLoadingWidget(
+              size: iconOnlySettings.size,
+              theme: _theme,
+              logoIconSettings: logoIconSettings,
+            );
+          }
+          
+          return IconOnlyWidget(
+            size: iconOnlySettings.size,
+            theme: _theme,
+            settings: _widgetService.widgetSettings,
+            onTap: _handleIconOnlyTap,
+            logoIconSettings: logoIconSettings,
+            isError: _widgetService.widgetState == AssistantWidgetState.error,
+          );
+        }
+
+        // Regular mode behavior
         switch (_widgetService.widgetState) {
           case AssistantWidgetState.loading:
             return LoadingWidget(
-              width: widget.width,
-              height: widget.height,
+              width: widget.width!,
+              height: widget.height!,
               theme: _theme,
             );
           case AssistantWidgetState.collapsed:
             return CollapsedWidget(
-              width: widget.width,
-              height: widget.height,
+              width: widget.width!,
+              height: widget.height!,
               theme: _theme,
               settings: _widgetService.widgetSettings,
               onTap: _widgetService.startCall,
@@ -133,14 +229,14 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
             );
           case AssistantWidgetState.connecting:
             return ConnectingWidget(
-              width: widget.width,
-              height: widget.height,
+              width: widget.width!,
+              height: widget.height!,
               theme: _theme,
             );
           case AssistantWidgetState.expanded:
             return ExpandedWidget(
-              width: widget.expandedWidth ?? widget.width,
-              height: widget.expandedHeight ?? (widget.height * 2),
+              width: widget.expandedWidth ?? widget.width!,
+              height: widget.expandedHeight ?? (widget.height! * 2),
               theme: _theme,
               settings: _widgetService.widgetSettings,
               agentStatus: _widgetService.agentStatus,
@@ -154,8 +250,8 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
           case AssistantWidgetState.conversation:
             // This case should no longer be used as we use overlay instead
             return ExpandedWidget(
-              width: widget.expandedWidth ?? widget.width,
-              height: widget.expandedHeight ?? (widget.height * 2),
+              width: widget.expandedWidth ?? widget.width!,
+              height: widget.expandedHeight ?? (widget.height! * 2),
               theme: _theme,
               settings: _widgetService.widgetSettings,
               agentStatus: _widgetService.agentStatus,
@@ -168,8 +264,8 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
             );
           case AssistantWidgetState.error:
             return ErrorDisplayWidget(
-              width: widget.expandedWidth ?? widget.width,
-              height: widget.expandedHeight ?? (widget.height * 2),
+              width: widget.expandedWidth ?? widget.width!,
+              height: widget.expandedHeight ?? (widget.height! * 2),
               theme: _theme,
               onLaunchUrl: _launchAssistantSettingsUrl,
             );

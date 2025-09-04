@@ -5,6 +5,7 @@ A Flutter widget that provides a standalone voice AI assistant interface using t
 ## Features
 
 - **Configurable Dimensions**: Set custom height and width for the widget
+- **Icon-Only Mode**: Floating action button-style interface for minimal UI footprint
 - **Multiple UI States**: 
   - Collapsed (initial state)
   - Connecting (during call setup)
@@ -33,6 +34,8 @@ dependencies:
 
 ### Basic Usage
 
+#### Regular Mode
+
 ```dart
 import 'package:flutter/material.dart';
 import 'package:flutter_telnyx_voice_ai_widget/flutter_telnyx_voice_ai_widget.dart';
@@ -55,14 +58,55 @@ class MyApp extends StatelessWidget {
 }
 ```
 
+#### Icon-Only Mode
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_telnyx_voice_ai_widget/flutter_telnyx_voice_ai_widget.dart';
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        floatingActionButton: TelnyxVoiceAiWidget(
+          assistantId: 'your-assistant-id',
+          iconOnlySettings: IconOnlySettings(
+            size: 56.0,
+            logoIconSettings: LogoIconSettings(
+              size: 40.0,
+              borderRadius: 20.0,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+```
+
 ### Widget Parameters
 
-- `height` (required): The height of the widget in its collapsed state
-- `width` (required): The width of the widget
+#### Regular Mode Parameters
+- `height` (required for regular mode): The height of the widget in its collapsed state
+- `width` (required for regular mode): The width of the widget
 - `assistantId` (required): The ID of the AI assistant to connect to
+- `expandedHeight` (optional): The height of the widget in its expanded state
+- `expandedWidth` (optional): The width of the widget in its expanded state
+- `startCallTextStyling` (optional): Text styling for the start call text in collapsed state
+- `logoIconSettings` (optional): Settings for customizing the logo/avatar icon
+- `widgetSettingOverride` (optional): Widget settings override
+
+#### Icon-Only Mode Parameters
+- `assistantId` (required): The ID of the AI assistant to connect to
+- `iconOnlySettings` (required for icon-only mode): Configuration for icon-only mode
+  - `size` (required): Size of the circular icon widget
+  - `logoIconSettings` (optional): Settings for customizing the logo/avatar icon
+  - `widgetSettingOverride` (optional): Widget settings override
 
 ### Widget States
 
+#### Regular Mode States
 The widget automatically transitions between different states:
 
 1. **Loading**: Shows a loading indicator while initializing
@@ -71,6 +115,16 @@ The widget automatically transitions between different states:
 4. **Expanded**: Active call state with audio visualizer and controls
 5. **Conversation**: Full transcript view with message history
 6. **Error**: Error state if something goes wrong
+
+#### Icon-Only Mode Behavior
+In icon-only mode, the widget behavior is simplified:
+
+1. **Loading**: Shows a loading indicator in circular form
+2. **Normal State**: Shows the icon in a circular container with theme-based background
+3. **Connecting State**: Shows a loading indicator while establishing the call connection
+4. **Error State**: Shows a red warning icon in a circular container
+5. **Call Flow**: Tapping the icon shows a loading indicator until the call is answered, then opens the conversation overlay
+6. **Error Handling**: Tapping the error icon opens an error dialog instead of an overlay
 
 ### Theming
 
@@ -135,17 +189,50 @@ This widget integrates with the Telnyx WebRTC SDK to provide:
 lib/
 ├── src/
 │   ├── models/
-│   │   ├── agent_status.dart      # Agent status enum
-│   │   ├── widget_state.dart      # Widget state enum
-│   │   └── widget_theme.dart      # Theme configuration
+│   │   ├── agent_status.dart        # Agent status enum (idle, thinking, waiting)
+│   │   ├── widget_state.dart        # Widget state enum
+│   │   ├── widget_theme.dart        # Theme configuration (light/dark)
+│   │   ├── logo_icon_settings.dart  # Logo/avatar customization settings
+│   │   └── icon_only_settings.dart  # Icon-only mode configuration
 │   ├── services/
-│   │   └── widget_service.dart    # Main service for Telnyx integration
+│   │   └── widget_service.dart      # Main service for Telnyx WebRTC integration
 │   ├── widgets/
-│   │   ├── audio_visualizer.dart  # Animated audio visualizer
-│   │   └── conversation_view.dart # Conversation transcript view
-│   └── telnyx_voice_ai_widget.dart # Main widget
-└── flutter_telnyx_voice_ai_widget.dart # Library exports
+│   │   ├── audio_visualizer.dart    # Animated audio visualizer with gradients
+│   │   ├── avatar_widget.dart       # Reusable avatar display component
+│   │   ├── collapsed_widget.dart    # Regular mode collapsed state
+│   │   ├── compact_call_widget.dart # Compact call controls for conversation view
+│   │   ├── connecting_widget.dart   # Connection loading state
+│   │   ├── control_button.dart      # Reusable control button component
+│   │   ├── conversation_view.dart   # Full transcript view with compact controls
+│   │   ├── error_display_widget.dart # Error state display
+│   │   ├── expanded_widget.dart     # Regular mode expanded state with visualizer
+│   │   ├── icon_only_widget.dart    # Icon-only mode implementation
+│   │   ├── loading_widget.dart      # Initial loading state
+│   │   └── message_content.dart     # Message bubble content renderer
+│   └── telnyx_voice_ai_widget.dart  # Main widget controller
+└── flutter_telnyx_voice_ai_widget.dart # Public API exports
 ```
+
+### Key Components
+
+#### Regular Mode Flow
+1. **LoadingWidget**: Shows loading indicator during initialization
+2. **CollapsedWidget**: Displays avatar and call-to-action text
+3. **ConnectingWidget**: Shows connection progress
+4. **ExpandedWidget**: Active call with audio visualizer and controls
+5. **ConversationView**: Full transcript with CompactCallWidget header
+
+#### Icon-Only Mode Flow
+1. **IconOnlyWidget**: Circular FAB-style button
+2. On tap: Shows loading indicator
+3. On connect: Opens full-screen conversation overlay
+4. On error: Shows red warning icon, tap for error dialog
+
+#### Conversation View Features
+- **CompactCallWidget**: Horizontal header with close button, mini visualizer, status text, and call controls
+- **Transcript Display**: Scrollable message history with user/assistant bubbles
+- **Message Input**: Text field for sending messages during conversation
+- **Auto-scroll**: Automatically scrolls to latest messages
 
 ### Building
 

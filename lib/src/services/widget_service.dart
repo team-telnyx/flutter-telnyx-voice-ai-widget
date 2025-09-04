@@ -39,6 +39,9 @@ class WidgetService extends ChangeNotifier {
   // Overlay management
   OverlayEntry? _conversationOverlay;
   bool _isConversationVisible = false;
+  
+  // Icon-only mode state tracking
+  bool _isIconOnlyConnecting = false;
 
   Call? get currentCall {
     return _telnyxClient.calls.values.firstOrNull;
@@ -62,6 +65,8 @@ class WidgetService extends ChangeNotifier {
   bool get isConversationVisible => _isConversationVisible;
   
   String? get assistantId => _assistantId;
+  
+  bool get isIconOnlyConnecting => _isIconOnlyConnecting;
   
   /// Gets the current processed audio levels for visualization (preferred)
   List<double> get inboundAudioLevels => List.unmodifiable(_processedAudioLevels.isNotEmpty ? _processedAudioLevels : _inboundAudioLevels);
@@ -113,12 +118,37 @@ class WidgetService extends ChangeNotifier {
       _updateWidgetState(AssistantWidgetState.error);
     }
   }
+  
+  /// Start a call in icon-only mode
+  Future<void> startIconOnlyCall() async {
+    try {
+      _isIconOnlyConnecting = true;
+      notifyListeners();
+
+      // Make a call to a hardcoded destination
+      final call = _telnyxClient.newInvite(
+        'AI Assistant User', // callerName
+        'anonymous', // callerNumber
+        'xxx', // destinationNumber
+        '', // clientState
+        debug: true
+      );
+      
+      // Set up call quality metrics observation
+      _observeCallQuality(call);
+    } catch (e) {
+      debugPrint('Error starting icon-only call: $e');
+      _isIconOnlyConnecting = false;
+      _updateWidgetState(AssistantWidgetState.error);
+    }
+  }
 
   /// End the current call
   Future<void> endCall() async {
     try {
       currentCall?.endCall();
       _isCallActive = false;
+      _isIconOnlyConnecting = false; // Reset icon-only connecting state
       _updateWidgetState(AssistantWidgetState.collapsed);
       _updateAgentStatus(AgentStatus.idle);
       
@@ -187,6 +217,7 @@ class WidgetService extends ChangeNotifier {
         case SocketMethod.bye:
           debugPrint('📞 Call ended');
           _isCallActive = false;
+          _isIconOnlyConnecting = false; // Reset icon-only connecting state
           
           // Close conversation overlay if it's open
           hideConversationOverlay();
@@ -426,7 +457,15 @@ class WidgetService extends ChangeNotifier {
   /// Handle call answer
   void _handleCallAnswer() {
     _isCallActive = true;
-    _updateWidgetState(AssistantWidgetState.expanded);
+    
+    // If we were in icon-only connecting mode, show the conversation overlay
+    if (_isIconOnlyConnecting) {
+      _isIconOnlyConnecting = false;
+      showConversationOverlay();
+    } else {
+      _updateWidgetState(AssistantWidgetState.expanded);
+    }
+    
     _updateAgentStatus(AgentStatus.idle); // Start idle, let conversation flow control status
     
     // Set up call quality observation when call is answered
