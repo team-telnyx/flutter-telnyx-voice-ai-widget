@@ -50,6 +50,7 @@ class CompactCallWidget extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
+                  const Spacer(),
                   _CompactControlButton(
                     onPressed: onClose,
                     icon: Icons.close,
@@ -57,7 +58,6 @@ class CompactCallWidget extends StatelessWidget {
                     iconColor: theme.textColor,
                     theme: theme,
                   ),
-                  const Spacer(),
                 ],
               ),
             ),
