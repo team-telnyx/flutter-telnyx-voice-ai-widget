@@ -103,9 +103,9 @@ class _ConversationViewState extends State<ConversationView> {
 
     Widget content = Column(
       children: [
-        // Expanded call widget at the top (takes half the space)
+        // Expanded call widget at the top (takes 40% of the space)
         Expanded(
-          flex: 1,
+          flex: 2, // 40% of the space (2 out of 5 total flex)
           child: Container(
             color: topSectionColor,
             child: CompactCallWidget(
@@ -124,19 +124,27 @@ class _ConversationViewState extends State<ConversationView> {
           ),
         ),
 
-        // Conversation section (takes the other half with rounded corners)
+        // Conversation section (takes 60% of the space with rounded corners and overlap effect)
         Expanded(
-          flex: 1,
-          child: Container(
-            decoration: BoxDecoration(
-              color: bottomSectionColor,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
+          flex: 3, // 60% of the space (3 out of 5 total flex)
+          child: Stack(
+            children: [
+              // Background extension to fill the gap
+              Container(
+                color: topSectionColor,
+                height: 20, // Height of the border radius
               ),
-            ),
-            child: Column(
-              children: [
+              // Main conversation container with rounded corners
+              Container(
+                decoration: BoxDecoration(
+                  color: bottomSectionColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                  ),
+                ),
+                child: Column(
+                  children: [
                 // Transcript
                 Expanded(
                   child: ListView.builder(
@@ -250,8 +258,10 @@ class _ConversationViewState extends State<ConversationView> {
                     ),
                   ),
                 ),
-              ],
-            ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ],
