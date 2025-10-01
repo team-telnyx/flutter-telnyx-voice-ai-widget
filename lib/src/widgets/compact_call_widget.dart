@@ -93,9 +93,10 @@ class CompactCallWidget extends StatelessWidget {
             
             // Controls at the bottom
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(8),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // Mute button
                   _ExpandedControlButton(
@@ -105,7 +106,8 @@ class CompactCallWidget extends StatelessWidget {
                     iconColor: isMuted ? Colors.white : theme.textColor,
                     theme: theme,
                   ),
-                  
+
+                  const SizedBox(width: 24),
                   // End call button
                   _ExpandedControlButton(
                     onPressed: onEndCall,
