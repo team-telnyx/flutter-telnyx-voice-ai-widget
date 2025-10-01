@@ -86,19 +86,19 @@ class _ConversationViewState extends State<ConversationView> {
   @override
   Widget build(BuildContext context) {
     // Define colors based on theme
-    final bool isDarkMode = widget.theme.backgroundColor == Colors.black ||
-        widget.theme.backgroundColor.computeLuminance() < 0.5;
-    
-    final Color topSectionColor = isDarkMode 
-        ? const Color(0xFF000000)  // Dark mode: black
+    final bool isDarkMode = widget.theme.type == WidgetThemeType.dark ||
+        widget.theme.backgroundColor == Colors.black;
+
+    final Color topSectionColor = isDarkMode
+        ? const Color(0xFF000000) // Dark mode: black
         : const Color(0xFFFFFDF4); // Light mode: #fffdf4
-    
-    final Color bottomSectionColor = isDarkMode 
-        ? const Color(0xFF38383A)  // Dark mode: #38383a
+
+    final Color bottomSectionColor = isDarkMode
+        ? const Color(0xFF38383A) // Dark mode: #38383a
         : const Color(0xFFE3E0CE); // Light mode: #e3e0ce
-    
-    final Color textBoxColor = isDarkMode 
-        ? const Color(0xFF222127)  // Dark mode: #222127
+
+    final Color textBoxColor = isDarkMode
+        ? const Color(0xFF222127) // Dark mode: #222127
         : const Color(0xFFFFFDF4); // Light mode: #fffdf4
 
     Widget content = Column(
@@ -118,7 +118,8 @@ class _ConversationViewState extends State<ConversationView> {
               onClose: widget.onClose,
               onToggleMute: widget.onToggleMute,
               onEndCall: widget.onEndCall,
-              isExpanded: true, // New parameter to indicate expanded mode
+              isExpanded: true,
+              // New parameter to indicate expanded mode
               backgroundColor: topSectionColor,
             ),
           ),
@@ -145,119 +146,122 @@ class _ConversationViewState extends State<ConversationView> {
                 ),
                 child: Column(
                   children: [
-                // Transcript
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: widget.transcript.length,
-                    itemBuilder: (context, index) {
-                      final item = widget.transcript[index];
-                      final isUser = item.role == 'user';
+                    // Transcript
+                    Expanded(
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: widget.transcript.length,
+                        itemBuilder: (context, index) {
+                          final item = widget.transcript[index];
+                          final isUser = item.role == 'user';
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (!isUser) ...[
-                              AvatarWidget(
-                                avatarUrl: widget.avatarUrl,
-                                size: 32,
-                                borderRadius: 16,
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color:
-                                      isUser
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (!isUser) ...[
+                                  AvatarWidget(
+                                    avatarUrl: widget.avatarUrl,
+                                    size: 32,
+                                    borderRadius: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                Expanded(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: isUser
                                           ? widget.theme.primaryColor
                                           : widget.theme.buttonColor,
-                                  borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: MessageContent(
+                                      item: item,
+                                      isUser: isUser,
+                                      theme: widget.theme,
+                                    ),
+                                  ),
                                 ),
-                                child: MessageContent(
-                                  item: item,
-                                  isUser: isUser,
-                                  theme: widget.theme,
+                                if (isUser) ...[
+                                  const SizedBox(width: 8),
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: widget.theme.buttonColor,
+                                    child: Icon(
+                                      Icons.person,
+                                      size: 16,
+                                      color: widget.theme.textColor,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // Message input
+                    SafeArea(
+                      top: false,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _messageController,
+                                decoration: InputDecoration(
+                                  hintText: 'Type a message...',
+                                  hintStyle: TextStyle(
+                                    color: widget.theme.secondaryTextColor,
+                                  ),
+                                  filled: true,
+                                  fillColor: textBoxColor,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: BorderSide(
+                                        color: widget.theme.borderColor),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: BorderSide(
+                                        color: widget.theme.borderColor),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                    borderSide: BorderSide(
+                                        color: widget.theme.primaryColor),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 16,
+                                  ),
                                 ),
+                                style: TextStyle(color: widget.theme.textColor),
+                                onSubmitted: (_) => _sendMessage(),
                               ),
                             ),
-                            if (isUser) ...[
-                              const SizedBox(width: 8),
-                              CircleAvatar(
-                                radius: 16,
-                                backgroundColor: widget.theme.buttonColor,
-                                child: Icon(
-                                  Icons.person,
-                                  size: 16,
-                                  color: widget.theme.textColor,
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: _sendMessage,
+                              icon: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: widget.theme.primaryColor,
+                                  shape: BoxShape.circle,
                                 ),
+                                child: const Icon(Icons.send,
+                                    color: Colors.white, size: 20),
                               ),
-                            ],
+                            ),
                           ],
                         ),
-                      );
-                    },
-                  ),
-                ),
-
-                // Message input
-                SafeArea(
-                  top: false,
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _messageController,
-                            decoration: InputDecoration(
-                              hintText: 'Type a message...',
-                              hintStyle: TextStyle(
-                                color: widget.theme.secondaryTextColor,
-                              ),
-                              filled: true,
-                              fillColor: textBoxColor,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                borderSide: BorderSide(color: widget.theme.borderColor),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                borderSide: BorderSide(color: widget.theme.borderColor),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                                borderSide: BorderSide(color: widget.theme.primaryColor),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                            style: TextStyle(color: widget.theme.textColor),
-                            onSubmitted: (_) => _sendMessage(),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: _sendMessage,
-                          icon: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: widget.theme.primaryColor,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.send, color: Colors.white, size: 20),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
                   ],
                 ),
               ),
@@ -287,7 +291,4 @@ class _ConversationViewState extends State<ConversationView> {
       );
     }
   }
-
-
-
 }

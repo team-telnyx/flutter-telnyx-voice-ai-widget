@@ -65,16 +65,20 @@ class CompactCallWidget extends StatelessWidget {
             // Audio Visualizer (prominently in the middle)
             Expanded(
               flex: 2,
-              child: Center(
-                child: AudioVisualizer(
-                  color: audioVisualizerConfig['fallbackColor'],
-                  gradientName: audioVisualizerConfig['gradientName'],
-                  width: MediaQuery.of(context).size.width - 64,
-                  height: 80,
-                  preset: settings?.audioVisualizerConfig?.preset ?? 'roundBars',
-                  isActive: isCallActive,
-                  audioLevels: audioLevels,
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return Center(
+                    child: AudioVisualizer(
+                      color: audioVisualizerConfig['fallbackColor'],
+                      gradientName: audioVisualizerConfig['gradientName'],
+                      width: constraints.maxWidth - 64,
+                      height: 80,
+                      preset: settings?.audioVisualizerConfig?.preset ?? 'roundBars',
+                      isActive: isCallActive,
+                      audioLevels: audioLevels,
+                    ),
+                  );
+                },
               ),
             ),
             
