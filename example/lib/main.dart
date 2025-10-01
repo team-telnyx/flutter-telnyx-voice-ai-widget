@@ -424,8 +424,8 @@ class _MyHomePageState extends State<MyHomePage> {
                               logoIconSettings: LogoIconSettings(
                                 size: _iconSize! * 0.6, // Icon size is 60% of widget size
                                 borderRadius: _iconSize! / 2, // Circular
-                                backgroundColor: Colors.blue.shade100,
-                                borderColor: Colors.blue.shade300,
+                               // backgroundColor: Colors.blue.shade100,
+                                // borderColor: Colors.blue.shade300,
                                 borderWidth: 2,
                               ),
                             ),
