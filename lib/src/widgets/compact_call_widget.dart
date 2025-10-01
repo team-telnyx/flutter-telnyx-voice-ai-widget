@@ -14,6 +14,8 @@ class CompactCallWidget extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback onToggleMute;
   final VoidCallback onEndCall;
+  final bool isExpanded;
+  final Color? backgroundColor;
 
   const CompactCallWidget({
     super.key,
@@ -26,6 +28,8 @@ class CompactCallWidget extends StatelessWidget {
     required this.onClose,
     required this.onToggleMute,
     required this.onEndCall,
+    this.isExpanded = false,
+    this.backgroundColor,
   });
 
   @override
@@ -33,79 +37,165 @@ class CompactCallWidget extends StatelessWidget {
     final statusText = _getAgentStatusText(settings, agentStatus);
     final audioVisualizerConfig = _getAudioVisualizerConfig(settings);
 
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.backgroundColor,
-        border: Border(
-          bottom: BorderSide(color: theme.borderColor, width: 1),
+    if (isExpanded) {
+      // Expanded mode - similar to ExpandedWidget layout
+      return Container(
+        decoration: BoxDecoration(
+          color: backgroundColor ?? theme.backgroundColor,
         ),
-      ),
-      child: Row(
-        children: [
-          // Close button
-          _CompactControlButton(
-            onPressed: onClose,
-            icon: Icons.close,
-            backgroundColor: theme.buttonColor,
-            iconColor: theme.textColor,
-            theme: theme,
-          ),
-          const SizedBox(width: 16),
-          
-          // Audio Visualizer with status text
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AudioVisualizer(
+        child: Column(
+          children: [
+            // Close button at the top
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  _CompactControlButton(
+                    onPressed: onClose,
+                    icon: Icons.close,
+                    backgroundColor: theme.buttonColor,
+                    iconColor: theme.textColor,
+                    theme: theme,
+                  ),
+                  const Spacer(),
+                ],
+              ),
+            ),
+            
+            // Audio Visualizer (prominently in the middle)
+            Expanded(
+              flex: 2,
+              child: Center(
+                child: AudioVisualizer(
                   color: audioVisualizerConfig['fallbackColor'],
                   gradientName: audioVisualizerConfig['gradientName'],
-                  width: 120,
-                  height: 30,
+                  width: MediaQuery.of(context).size.width - 64,
+                  height: 80,
                   preset: settings?.audioVisualizerConfig?.preset ?? 'roundBars',
                   isActive: isCallActive,
                   audioLevels: audioLevels,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  statusText,
-                  style: TextStyle(
-                    color: theme.secondaryTextColor,
-                    fontSize: 12,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+              ),
             ),
+            
+            // Status Text
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                statusText,
+                style: TextStyle(
+                  color: theme.secondaryTextColor,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            
+            // Controls at the bottom
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Mute button
+                  _ExpandedControlButton(
+                    onPressed: onToggleMute,
+                    icon: isMuted ? Icons.mic_off : Icons.mic,
+                    backgroundColor: isMuted ? Colors.red : theme.buttonColor,
+                    iconColor: isMuted ? Colors.white : theme.textColor,
+                    theme: theme,
+                  ),
+                  
+                  // End call button
+                  _ExpandedControlButton(
+                    onPressed: onEndCall,
+                    icon: Icons.call_end,
+                    backgroundColor: Colors.red,
+                    iconColor: Colors.white,
+                    theme: theme,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Compact mode - original layout
+      return Container(
+        height: 80,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: backgroundColor ?? theme.backgroundColor,
+          border: Border(
+            bottom: BorderSide(color: theme.borderColor, width: 1),
           ),
-          
-          const SizedBox(width: 16),
-          
-          // Mute button
-          _CompactControlButton(
-            onPressed: onToggleMute,
-            icon: isMuted ? Icons.mic_off : Icons.mic,
-            backgroundColor: isMuted ? Colors.red : theme.buttonColor,
-            iconColor: isMuted ? Colors.white : theme.textColor,
-            theme: theme,
-          ),
-          const SizedBox(width: 8),
-          
-          // End call button
-          _CompactControlButton(
-            onPressed: onEndCall,
-            icon: Icons.call_end,
-            backgroundColor: Colors.red,
-            iconColor: Colors.white,
-            theme: theme,
-          ),
-        ],
-      ),
-    );
+        ),
+        child: Row(
+          children: [
+            // Close button
+            _CompactControlButton(
+              onPressed: onClose,
+              icon: Icons.close,
+              backgroundColor: theme.buttonColor,
+              iconColor: theme.textColor,
+              theme: theme,
+            ),
+            const SizedBox(width: 16),
+            
+            // Audio Visualizer with status text
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AudioVisualizer(
+                    color: audioVisualizerConfig['fallbackColor'],
+                    gradientName: audioVisualizerConfig['gradientName'],
+                    width: 120,
+                    height: 30,
+                    preset: settings?.audioVisualizerConfig?.preset ?? 'roundBars',
+                    isActive: isCallActive,
+                    audioLevels: audioLevels,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    statusText,
+                    style: TextStyle(
+                      color: theme.secondaryTextColor,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(width: 16),
+            
+            // Mute button
+            _CompactControlButton(
+              onPressed: onToggleMute,
+              icon: isMuted ? Icons.mic_off : Icons.mic,
+              backgroundColor: isMuted ? Colors.red : theme.buttonColor,
+              iconColor: isMuted ? Colors.white : theme.textColor,
+              theme: theme,
+            ),
+            const SizedBox(width: 8),
+            
+            // End call button
+            _CompactControlButton(
+              onPressed: onEndCall,
+              icon: Icons.call_end,
+              backgroundColor: Colors.red,
+              iconColor: Colors.white,
+              theme: theme,
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Map<String, dynamic> _getAudioVisualizerConfig(WidgetSettings? settings) {
@@ -218,6 +308,49 @@ class _CompactControlButton extends StatelessWidget {
             icon,
             color: iconColor,
             size: 18,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Expanded version of the control button (larger for expanded mode)
+class _ExpandedControlButton extends StatelessWidget {
+  final VoidCallback onPressed;
+  final IconData icon;
+  final Color backgroundColor;
+  final Color iconColor;
+  final WidgetTheme theme;
+
+  const _ExpandedControlButton({
+    required this.onPressed,
+    required this.icon,
+    required this.backgroundColor,
+    required this.iconColor,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        onPressed: onPressed,
+        icon: Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            shape: BoxShape.circle,
+            border: Border.all(color: theme.borderColor, width: 0.5),
+          ),
+          child: Icon(
+            icon,
+            color: iconColor,
+            size: 24,
           ),
         ),
       ),
