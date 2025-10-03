@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:telnyx_webrtc/telnyx_webrtc.dart';
+import 'package:telnyx_webrtc/model/transcript_item.dart';
 import 'models/widget_theme.dart';
 import 'models/widget_state.dart';
 import 'models/logo_icon_settings.dart';
@@ -22,27 +23,34 @@ class TelnyxVoiceAiWidget extends StatefulWidget {
 
   /// Height of the widget in collapsed state (ignored in iconOnly mode)
   final double? height;
-  
+
   /// Width of the widget in collapsed state (ignored in iconOnly mode)
   final double? width;
-  
+
   /// Height of the widget in expanded state (ignored in iconOnly mode)
   final double? expandedHeight;
-  
+
   /// Width of the widget in expanded state (ignored in iconOnly mode)
   final double? expandedWidth;
-  
+
   /// Optional text styling for the start call text in collapsed state (ignored in iconOnly mode)
   final TextStyle? startCallTextStyling;
-  
+
   /// Optional settings for customizing the logo/avatar icon
   final LogoIconSettings? logoIconSettings;
-  
+
   /// Optional widget settings override that will override server-provided settings
   final WidgetSettings? widgetSettingOverride;
 
   /// Configuration for icon-only mode. When provided, the widget will render as a floating action button-style icon
   final IconOnlySettings? iconOnlySettings;
+
+  /// Optional callback that receives the full conversation transcript (excluding partial messages)
+  final void Function(List<TranscriptItem> transcript)? onTranscriptUpdate;
+
+  /// Optional callback that provides access to overlay control functions
+  final void Function(VoidCallback hideOverlay, VoidCallback showOverlay)?
+      onOverlayControllerReady;
 
   const TelnyxVoiceAiWidget({
     super.key,
@@ -55,10 +63,12 @@ class TelnyxVoiceAiWidget extends StatefulWidget {
     this.logoIconSettings,
     this.widgetSettingOverride,
     this.iconOnlySettings,
+    this.onTranscriptUpdate,
+    this.onOverlayControllerReady,
   }) : assert(
-         (iconOnlySettings != null) || (height != null && width != null),
-         'Either iconOnlySettings must be provided, or both height and width must be provided for regular mode',
-       );
+          (iconOnlySettings != null) || (height != null && width != null),
+          'Either iconOnlySettings must be provided, or both height and width must be provided for regular mode',
+        );
 
   @override
   State<TelnyxVoiceAiWidget> createState() => _TelnyxVoiceAiWidgetState();
@@ -80,8 +90,26 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
   }
 
   void _initializeWidget() async {
-    final widgetSettingOverride = widget.iconOnlySettings?.widgetSettingOverride ?? widget.widgetSettingOverride;
-    await _widgetService.initialize(widget.assistantId, widgetSettingOverride: widgetSettingOverride);
+    final widgetSettingOverride =
+        widget.iconOnlySettings?.widgetSettingOverride ??
+            widget.widgetSettingOverride;
+    await _widgetService.initialize(widget.assistantId,
+        widgetSettingOverride: widgetSettingOverride);
+
+    // Set up transcript callback if provided
+    if (widget.onTranscriptUpdate != null) {
+      _widgetService.onTranscriptUpdate = (List<TranscriptItem> transcript) {
+        widget.onTranscriptUpdate!(transcript);
+      };
+    }
+
+    // Provide overlay control callbacks if requested
+    if (widget.onOverlayControllerReady != null) {
+      widget.onOverlayControllerReady!(
+        _widgetService.hideConversationOverlay,
+        _widgetService.showConversationOverlay,
+      );
+    }
   }
 
   void _onWidgetServiceChanged() {
@@ -111,7 +139,7 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
       _widgetService.startIconOnlyCall();
     }
   }
-  
+
   /// Show error dialog for icon-only mode
   void _showErrorDialog() {
     showDialog(
@@ -164,7 +192,8 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
       animation: _widgetService,
       builder: (context, child) {
         // Handle conversation overlay creation
-        if (_widgetService.isConversationVisible && _widgetService.widgetState != AssistantWidgetState.conversation) {
+        if (_widgetService.isConversationVisible &&
+            _widgetService.widgetState != AssistantWidgetState.conversation) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _widgetService.createConversationOverlay(context, () {
               return ConversationOverlay(
@@ -184,21 +213,23 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
             });
           });
         }
-        
+
         // Handle icon-only mode
         if (_isIconOnlyMode) {
           final iconOnlySettings = widget.iconOnlySettings!;
-          final logoIconSettings = iconOnlySettings.logoIconSettings ?? widget.logoIconSettings;
-          
+          final logoIconSettings =
+              iconOnlySettings.logoIconSettings ?? widget.logoIconSettings;
+
           // Show loading widget during initial loading or when connecting
-          if (_widgetService.widgetState == AssistantWidgetState.loading || _widgetService.isIconOnlyConnecting) {
+          if (_widgetService.widgetState == AssistantWidgetState.loading ||
+              _widgetService.isIconOnlyConnecting) {
             return IconOnlyLoadingWidget(
               size: iconOnlySettings.size,
               theme: _theme,
               logoIconSettings: logoIconSettings,
             );
           }
-          
+
           return IconOnlyWidget(
             size: iconOnlySettings.size,
             theme: _theme,
@@ -243,7 +274,8 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
               isMuted: _widgetService.isMuted,
               isCallActive: _widgetService.isCallActive,
               audioLevels: _widgetService.inboundAudioLevels,
-              onTap: () => _widgetService.changeWidgetState(AssistantWidgetState.conversation),
+              onTap: () => _widgetService
+                  .changeWidgetState(AssistantWidgetState.conversation),
               onToggleMute: _widgetService.toggleMute,
               onEndCall: _widgetService.endCall,
             );
@@ -258,7 +290,8 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
               isMuted: _widgetService.isMuted,
               isCallActive: _widgetService.isCallActive,
               audioLevels: _widgetService.inboundAudioLevels,
-              onTap: () => _widgetService.changeWidgetState(AssistantWidgetState.conversation),
+              onTap: () => _widgetService
+                  .changeWidgetState(AssistantWidgetState.conversation),
               onToggleMute: _widgetService.toggleMute,
               onEndCall: _widgetService.endCall,
             );
@@ -274,20 +307,14 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
     );
   }
 
-
-
-
-
-
-
-
   /// Launch the Telnyx assistant settings URL
   Future<void> _launchAssistantSettingsUrl() async {
     final assistantId = _widgetService.assistantId;
     if (assistantId == null) return;
-    
-    final url = 'https://portal.telnyx.com/#/ai/assistants/edit/$assistantId?tab=telephony';
-    
+
+    final url =
+        'https://portal.telnyx.com/#/ai/assistants/edit/$assistantId?tab=telephony';
+
     try {
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
@@ -297,7 +324,4 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
       debugPrint('Error launching URL: $e');
     }
   }
-
-
 }
-

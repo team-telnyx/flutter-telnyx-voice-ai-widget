@@ -25,23 +25,29 @@ class WidgetService extends ChangeNotifier {
   bool _isMuted = false;
   bool _isCallActive = false;
   String? _assistantId;
-  
+
   // Audio visualization data
   final List<double> _inboundAudioLevels = [];
   final List<double> _processedAudioLevels = [];
   CallQualityMetrics? _callQualityMetrics;
-  
+
   // Audio processing configuration
   static const int maxAudioLevels = 100;
   static const double _audioSensitivity = 2.0; // Boost factor for low levels
   static const double _noiseGate = 0.05; // Minimum level to register
-  
+
   // Overlay management
   OverlayEntry? _conversationOverlay;
   bool _isConversationVisible = false;
-  
+
   // Icon-only mode state tracking
   bool _isIconOnlyConnecting = false;
+
+  // Transcript callback for external consumers
+  void Function(List<TranscriptItem> transcript)? onTranscriptUpdate;
+
+  // Track previous transcript to detect new/changed messages
+  List<TranscriptItem> _previousTranscript = [];
 
   Call? get currentCall {
     return _telnyxClient.calls.values.firstOrNull;
@@ -52,7 +58,8 @@ class WidgetService extends ChangeNotifier {
 
   AgentStatus get agentStatus => _agentStatus;
 
-  WidgetSettings? get widgetSettings => _widgetSettingOverride ?? _widgetSettings;
+  WidgetSettings? get widgetSettings =>
+      _widgetSettingOverride ?? _widgetSettings;
 
   List<TranscriptItem> get transcript => List.unmodifiable(_transcript);
 
@@ -61,26 +68,31 @@ class WidgetService extends ChangeNotifier {
   bool get isCallActive => _isCallActive;
 
   TelnyxClient get telnyxClient => _telnyxClient;
-  
+
   bool get isConversationVisible => _isConversationVisible;
-  
+
   String? get assistantId => _assistantId;
-  
+
   bool get isIconOnlyConnecting => _isIconOnlyConnecting;
-  
+
   /// Gets the current processed audio levels for visualization (preferred)
-  List<double> get inboundAudioLevels => List.unmodifiable(_processedAudioLevels.isNotEmpty ? _processedAudioLevels : _inboundAudioLevels);
-  
+  List<double> get inboundAudioLevels =>
+      List.unmodifiable(_processedAudioLevels.isNotEmpty
+          ? _processedAudioLevels
+          : _inboundAudioLevels);
+
   /// Gets the raw inbound audio levels
-  List<double> get rawInboundAudioLevels => List.unmodifiable(_inboundAudioLevels);
-  
+  List<double> get rawInboundAudioLevels =>
+      List.unmodifiable(_inboundAudioLevels);
+
   /// Gets the current call quality metrics
   CallQualityMetrics? get callQualityMetrics => _callQualityMetrics;
 
   WidgetSettings? _widgetSettingOverride;
 
   /// Initialize the widget with assistant ID
-  Future<void> initialize(String assistantId, {WidgetSettings? widgetSettingOverride}) async {
+  Future<void> initialize(String assistantId,
+      {WidgetSettings? widgetSettingOverride}) async {
     try {
       _assistantId = assistantId;
       _widgetSettingOverride = widgetSettingOverride;
@@ -104,13 +116,12 @@ class WidgetService extends ChangeNotifier {
 
       // Make a call to a hardcoded destination
       final call = _telnyxClient.newInvite(
-        'AI Assistant User', // callerName
-        'anonymous', // callerNumber
-        'xxx', // destinationNumber
-        '', // clientState
-        debug: true
-      );
-      
+          'AI Assistant User', // callerName
+          'anonymous', // callerNumber
+          'xxx', // destinationNumber
+          '', // clientState
+          debug: true);
+
       // Set up call quality metrics observation
       _observeCallQuality(call);
     } catch (e) {
@@ -118,7 +129,7 @@ class WidgetService extends ChangeNotifier {
       _updateWidgetState(AssistantWidgetState.error);
     }
   }
-  
+
   /// Start a call in icon-only mode
   Future<void> startIconOnlyCall() async {
     try {
@@ -127,13 +138,12 @@ class WidgetService extends ChangeNotifier {
 
       // Make a call to a hardcoded destination
       final call = _telnyxClient.newInvite(
-        'AI Assistant User', // callerName
-        'anonymous', // callerNumber
-        'xxx', // destinationNumber
-        '', // clientState
-        debug: true
-      );
-      
+          'AI Assistant User', // callerName
+          'anonymous', // callerNumber
+          'xxx', // destinationNumber
+          '', // clientState
+          debug: true);
+
       // Set up call quality metrics observation
       _observeCallQuality(call);
     } catch (e) {
@@ -151,21 +161,21 @@ class WidgetService extends ChangeNotifier {
       _isIconOnlyConnecting = false; // Reset icon-only connecting state
       _updateWidgetState(AssistantWidgetState.collapsed);
       _updateAgentStatus(AgentStatus.idle);
-      
+
       // Clear transcript when call ends
       _transcript.clear();
       _telnyxClient.clearTranscript();
-      
+
       // Clear audio levels and metrics
       _inboundAudioLevels.clear();
       _processedAudioLevels.clear();
       _callQualityMetrics = null;
-      
+
       // Update overlay if it's visible to reflect cleared transcript
       if (_conversationOverlay != null) {
         _conversationOverlay!.markNeedsBuild();
       }
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error ending call: $e');
@@ -218,7 +228,7 @@ class WidgetService extends ChangeNotifier {
           debugPrint('📞 Call ended');
           _isCallActive = false;
           _isIconOnlyConnecting = false; // Reset icon-only connecting state
-          
+
           // Close conversation overlay if it's open
           hideConversationOverlay();
 
@@ -238,6 +248,47 @@ class WidgetService extends ChangeNotifier {
     // Use the SDK's built-in transcript management
     _telnyxClient.onTranscriptUpdate = (List<TranscriptItem> transcriptItems) {
       _transcript = List.from(transcriptItems);
+
+      // Filter out partial messages
+      final fullTranscript =
+          _transcript.where((item) => item.isPartial != true).toList();
+
+      // Detect new or changed messages by comparing with previous transcript
+      if (onTranscriptUpdate != null) {
+        // Find messages that are new or have changed content
+        final newOrChangedMessages = <TranscriptItem>[];
+
+        for (final item in fullTranscript) {
+          // Skip empty messages
+          if (item.content.trim().isEmpty) {
+            continue;
+          }
+
+          final previousItem = _previousTranscript.firstWhere(
+            (prev) => prev.id == item.id,
+            orElse: () => TranscriptItem(
+              role: '',
+              content: '',
+              timestamp: DateTime.now(),
+              id: '',
+            ),
+          );
+
+          // Add if it's a new message (not found) or content has changed
+          if (previousItem.id.isEmpty || previousItem.content != item.content) {
+            newOrChangedMessages.add(item);
+          }
+        }
+
+        // Only emit if there are new or changed messages
+        if (newOrChangedMessages.isNotEmpty) {
+          onTranscriptUpdate!(newOrChangedMessages);
+        }
+
+        // Update previous transcript for next comparison
+        _previousTranscript = List.from(fullTranscript);
+      }
+
       notifyListeners();
     };
 
@@ -266,15 +317,15 @@ class WidgetService extends ChangeNotifier {
     try {
       // Use the SDK's properly parsed AI conversation params
       final aiParams = message.message.aiConversationParams;
-      
+
       if (aiParams == null) {
         debugPrint('❌ AI conversation params are null');
         return;
       }
-      
+
       final type = aiParams.type;
       debugPrint('🔍 AI Conversation message received - Type: $type');
-      
+
       switch (type) {
         case 'widget_settings':
           _handleWidgetSettings(aiParams);
@@ -306,7 +357,7 @@ class WidgetService extends ChangeNotifier {
       debugPrint('Error handling AI conversation: $e');
     }
   }
-  
+
   void _handleWidgetSettings(AiConversationParams params) {
     if (params.widgetSettings != null) {
       // Store WidgetSettings object directly
@@ -315,7 +366,7 @@ class WidgetService extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   void _handleConversationItemCreated(AiConversationParams params) {
     final item = params.item;
     if (item != null) {
@@ -323,7 +374,7 @@ class WidgetService extends ChangeNotifier {
         // User finished speaking, agent is thinking
         debugPrint('🤔 User finished speaking - Agent thinking');
         _updateAgentStatus(AgentStatus.thinking);
-        
+
         // Add user message to transcript if it has content
         if (item.content != null && item.content!.isNotEmpty) {
           final content = item.content!.first;
@@ -342,52 +393,54 @@ class WidgetService extends ChangeNotifier {
       }
     }
   }
-  
+
   void _handleResponseTextDelta(AiConversationParams params) {
     // Agent started responding, can be interrupted
     debugPrint('💬 AI started responding - Agent waiting');
     _updateAgentStatus(AgentStatus.waiting);
-    
+
     // Handle delta text for building transcript
     if (params.delta != null && params.delta!.isNotEmpty) {
-      _handleAssistantTextDelta(params.delta!, params.itemId, params.responseId);
+      _handleAssistantTextDelta(
+          params.delta!, params.itemId, params.responseId);
     }
   }
-  
+
   void _handleResponseDone(AiConversationParams params) {
     // Response is complete, agent is idle
     debugPrint('✅ Response complete - Agent idle');
     _updateAgentStatus(AgentStatus.idle);
-    
+
     // Mark any partial response as complete
     if (params.responseId != null) {
       _finalizeAssistantResponse(params.responseId!);
     }
   }
-  
+
   void _handleResponseCreated(AiConversationParams params) {
     debugPrint('🔄 Response created');
     // Response generation started - this usually means the agent is about to respond
     _updateAgentStatus(AgentStatus.waiting);
   }
-  
+
   void _handleResponseOutputItemAdded(AiConversationParams params) {
     debugPrint('📤 Response output item added');
     // Response output item added - response is being prepared
   }
-  
+
   void _handleResponseContentPartAdded(AiConversationParams params) {
     debugPrint('📝 Response content part added');
     // Content part added to response
   }
-  
+
   /// Handle assistant text delta for building transcript
-  void _handleAssistantTextDelta(String delta, String? itemId, String? responseId) {
+  void _handleAssistantTextDelta(
+      String delta, String? itemId, String? responseId) {
     if (itemId == null) return;
-    
+
     // Find existing assistant message or create new one
     final existingIndex = _transcript.indexWhere((item) => item.id == itemId);
-    
+
     if (existingIndex != -1) {
       // Update existing message
       final existing = _transcript[existingIndex];
@@ -398,12 +451,12 @@ class WidgetService extends ChangeNotifier {
         id: existing.id,
         isPartial: true,
       );
-      
+
       // Update overlay if it's visible
       if (_conversationOverlay != null) {
         _conversationOverlay!.markNeedsBuild();
       }
-      
+
       notifyListeners();
     } else {
       // Create new assistant message
@@ -416,19 +469,29 @@ class WidgetService extends ChangeNotifier {
       ));
     }
   }
-  
+
   /// Add transcript item to the list
   void _addTranscriptItem(TranscriptItem item) {
     _transcript.add(item);
-    
+
+    // If this is a full message (not partial), emit to callback
+    if (item.isPartial != true) {
+      final fullTranscript = _transcript
+          .where((transcriptItem) => transcriptItem.isPartial != true)
+          .toList();
+      if (onTranscriptUpdate != null) {
+        onTranscriptUpdate!(fullTranscript);
+      }
+    }
+
     // Update overlay if it's visible
     if (_conversationOverlay != null) {
       _conversationOverlay!.markNeedsBuild();
     }
-    
+
     notifyListeners();
   }
-  
+
   /// Finalize assistant response by marking it as complete
   void _finalizeAssistantResponse(String responseId) {
     // Find all partial responses with this response ID and mark them as complete
@@ -445,19 +508,26 @@ class WidgetService extends ChangeNotifier {
         );
       }
     }
-    
+
+    // Emit full transcript to callback after finalizing responses
+    final fullTranscript =
+        _transcript.where((item) => item.isPartial != true).toList();
+    if (onTranscriptUpdate != null) {
+      onTranscriptUpdate!(fullTranscript);
+    }
+
     // Update overlay if it's visible
     if (_conversationOverlay != null) {
       _conversationOverlay!.markNeedsBuild();
     }
-    
+
     notifyListeners();
   }
 
   /// Handle call answer
   void _handleCallAnswer() {
     _isCallActive = true;
-    
+
     // If we were in icon-only connecting mode, show the conversation overlay
     if (_isIconOnlyConnecting) {
       _isIconOnlyConnecting = false;
@@ -465,16 +535,17 @@ class WidgetService extends ChangeNotifier {
     } else {
       _updateWidgetState(AssistantWidgetState.expanded);
     }
-    
-    _updateAgentStatus(AgentStatus.idle); // Start idle, let conversation flow control status
-    
+
+    _updateAgentStatus(
+        AgentStatus.idle); // Start idle, let conversation flow control status
+
     // Set up call quality observation when call is answered
     final call = currentCall;
     if (call != null) {
       _observeCallQuality(call);
     }
   }
-  
+
   /// Observe call quality metrics for audio visualization
   void _observeCallQuality(Call call) {
     // Set up call quality callback to receive metrics every 100ms
@@ -497,20 +568,20 @@ class WidgetService extends ChangeNotifier {
       notifyListeners();
     };
   }
-  
+
   /// Process raw audio level for better visualization
   double _processAudioLevel(double rawLevel) {
     // Apply noise gate
     if (rawLevel < _noiseGate) {
       return 0.0;
     }
-    
+
     // Apply sensitivity boost for low levels
     double processed = rawLevel * _audioSensitivity;
-    
+
     // Apply dynamic range compression using power curve
     processed = math.pow(processed, 0.8).toDouble();
-    
+
     // Clamp to valid range
     return processed.clamp(0.0, 1.0);
   }
@@ -532,18 +603,18 @@ class WidgetService extends ChangeNotifier {
       _updateWidgetState(newState);
     }
   }
-  
+
   /// Show full-screen conversation overlay
   void showConversationOverlay() {
     if (_isConversationVisible || _conversationOverlay != null) {
       return; // Already showing
     }
-    
+
     // This will be implemented when we have the BuildContext
     _isConversationVisible = true;
     notifyListeners();
   }
-  
+
   /// Hide conversation overlay
   void hideConversationOverlay() {
     if (_conversationOverlay != null) {
@@ -553,19 +624,20 @@ class WidgetService extends ChangeNotifier {
     _isConversationVisible = false;
     notifyListeners();
   }
-  
+
   /// Create and show the conversation overlay with context
-  void createConversationOverlay(BuildContext context, Widget Function() widgetBuilder) {
+  void createConversationOverlay(
+      BuildContext context, Widget Function() widgetBuilder) {
     if (_conversationOverlay != null) {
       // Update existing overlay instead of creating a new one
       _conversationOverlay!.markNeedsBuild();
       return;
     }
-    
+
     _conversationOverlay = OverlayEntry(
       builder: (context) => widgetBuilder(),
     );
-    
+
     Overlay.of(context).insert(_conversationOverlay!);
   }
 
