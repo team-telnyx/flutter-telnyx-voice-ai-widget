@@ -101,6 +101,26 @@ class _ConversationViewState extends State<ConversationView> {
         ? const Color(0xFF222127) // Dark mode: #222127
         : const Color(0xFFFFFDF4); // Light mode: #fffdf4
 
+    // Filter out only empty messages
+    // Deduplicate by ID - keep only the latest version of each message
+    final seenIds = <String>{};
+    final filteredTranscript = widget.transcript
+        .where((item) => item.content.trim().isNotEmpty)
+        .toList();
+
+    final displayTranscript = filteredTranscript
+        .reversed // Process in reverse to keep the latest version
+        .where((item) {
+          if (seenIds.contains(item.id)) {
+            return false; // Skip duplicate
+          }
+          seenIds.add(item.id);
+          return true;
+        })
+        .toList()
+        .reversed // Reverse back to original order
+        .toList();
+
     Widget content = Column(
       children: [
         // Expanded call widget at the top (takes 40% of the space)
@@ -151,9 +171,9 @@ class _ConversationViewState extends State<ConversationView> {
                       child: ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.all(16),
-                        itemCount: widget.transcript.length,
+                        itemCount: displayTranscript.length,
                         itemBuilder: (context, index) {
-                          final item = widget.transcript[index];
+                          final item = displayTranscript[index];
                           final isUser = item.role == 'user';
 
                           return Padding(
