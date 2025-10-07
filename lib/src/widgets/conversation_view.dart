@@ -96,6 +96,21 @@ class _ConversationViewState extends State<ConversationView> {
       }
     } catch (e) {
       debugPrint('Error picking image: $e');
+      
+      // Show user-friendly error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to pick image. Please check permissions and try again.',
+              style: TextStyle(color: widget.theme.textColor),
+            ),
+            backgroundColor: Colors.red.shade800,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
@@ -306,7 +321,7 @@ class _ConversationViewState extends State<ConversationView> {
                                       onPressed: _removeImage,
                                       icon: const Icon(Icons.close, size: 20),
                                       style: IconButton.styleFrom(
-                                        backgroundColor: Colors.red.withOpacity(0.1),
+                                        backgroundColor: Colors.red.withValues(alpha: 0.1),
                                         foregroundColor: Colors.red,
                                         minimumSize: const Size(32, 32),
                                       ),

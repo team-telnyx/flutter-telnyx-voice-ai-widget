@@ -1,3 +1,4 @@
+
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:telnyx_webrtc/model/transcript_item.dart';
@@ -26,9 +27,7 @@ class MessageContent extends StatelessWidget {
             item.content,
             style: TextStyle(
               // Slightly reduce opacity for partial messages to indicate they're still being received
-              color: (isUser ? Colors.white : theme.textColor).withOpacity(
-                item.isPartial == true ? 0.8 : 1.0,
-              ),
+              color: (isUser ? Colors.white : theme.textColor).withValues(alpha: item.isPartial == true ? 0.8 : 1.0),
               fontSize: 14,
             ),
           ),
@@ -99,6 +98,9 @@ class _DataUrlImageState extends State<_DataUrlImage> {
       if (uri.scheme != 'data') {
         throw const FormatException('Invalid scheme: expected "data"');
       }
+      if (uri.data == null) {
+        throw const FormatException('Data URL contains no image data');
+      }
       _imageData = uri.data!.contentAsBytes();
     } catch (e) {
       _error = e;
@@ -144,3 +146,4 @@ class _DataUrlImageState extends State<_DataUrlImage> {
     );
   }
 }
+
