@@ -53,7 +53,7 @@ class TelnyxVoiceAiWidget extends StatefulWidget {
   final void Function(VoidCallback hideOverlay, VoidCallback showOverlay)?
       onOverlayControllerReady;
 
-  /// Optional call parameters to customize call initialization
+  /// Optional call parameters to customize call initialization, this is primarily for logging purposes and does not effect where the call is routed. A call will always be routed to the assistant.
   final CallParams? callParams;
 
   const TelnyxVoiceAiWidget({
