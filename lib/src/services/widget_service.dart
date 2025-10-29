@@ -123,6 +123,7 @@ class WidgetService extends ChangeNotifier {
           _callParams?.callerNumber ?? 'anonymous', // callerNumber
           _callParams?.destinationNumber ?? 'xxx', // destinationNumber
           _callParams?.clientState ?? '', // clientState
+          customHeaders: _callParams?.customHeaders ?? const {},
           debug: true);
 
       // Set up call quality metrics observation
@@ -145,6 +146,7 @@ class WidgetService extends ChangeNotifier {
           _callParams?.callerNumber ?? 'anonymous', // callerNumber
           _callParams?.destinationNumber ?? 'xxx', // destinationNumber
           _callParams?.clientState ?? '', // clientState
+          customHeaders: _callParams?.customHeaders ?? const {},
           debug: true);
 
       // Set up call quality metrics observation
