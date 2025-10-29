@@ -17,6 +17,7 @@ A Flutter widget that provides a standalone voice AI assistant interface using t
 - **Call Controls**: Mute/unmute and end call functionality
 - **Conversation View**: Full transcript with message history
 - **Responsive Design**: Adapts to different screen sizes
+- **Custom Call Parameters**: Configure caller name, number, destination, and client state
 
 ## Installation
 
@@ -103,6 +104,32 @@ class MyApp extends StatelessWidget {
   - `size` (required): Size of the circular icon widget
   - `logoIconSettings` (optional): Settings for customizing the logo/avatar icon
   - `widgetSettingOverride` (optional): Widget settings override
+
+#### Call Parameters
+- `callParams` (optional): Custom parameters for call initialization
+  - `callerName` (optional): The caller name to display (defaults to 'AI Assistant User')
+  - `callerNumber` (optional): The caller number to use (defaults to 'anonymous')
+  - `destinationNumber` (optional): The destination number to call (defaults to 'xxx')
+  - `clientState` (optional): Custom client state data (defaults to empty string)
+  - `customHeaders` (optional): Custom headers to include with the call
+
+```dart
+TelnyxVoiceAiWidget(
+  assistantId: 'your-assistant-id',
+  height: 60,
+  width: 200,
+  callParams: const CallParams(
+    callerName: 'John Doe',
+    callerNumber: '+1234567890',
+    destinationNumber: '+0987654321',
+    clientState: 'custom-client-state-data',
+    customHeaders: {
+      'X-Custom-Header': 'custom-value',
+      'X-User-ID': 'user-123',
+    },
+  ),
+)
+```
 
 ### Widget States
 
