@@ -28,3 +28,8 @@ doc/api/
 .flutter-plugins
 .flutter-plugins-dependencies
 /.idea
+example/linux/flutter/generated_plugins.cmake
+example/macos/Flutter/GeneratedPluginRegistrant.swift
+example/windows/flutter/generated_plugin_registrant.cc
+example/windows/flutter/generated_plugins.cmake
+example/linux/flutter/generated_plugin_registrant.cc
