@@ -44,6 +44,18 @@ class ExampleUsage extends StatelessWidget {
             logoIconUrl: 'https://example.com/override-logo.png',
             // Add other WidgetSettings properties as needed
           ),
+          
+          // New parameter 4: Call parameters for customizing call initialization
+          callParams: const CallParams(
+            callerName: 'John Doe',
+            callerNumber: '+1234567890',
+            destinationNumber: '+0987654321',
+            clientState: 'custom-client-state-data',
+            customHeaders: {
+              'X-Custom-Header': 'custom-value',
+              'X-User-ID': 'user-123',
+            },
+          ),
         ),
       ),
     );

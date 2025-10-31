@@ -6,4 +6,5 @@ export 'src/models/agent_status.dart';
 export 'src/models/widget_state.dart';
 export 'src/models/logo_icon_settings.dart';
 export 'src/models/icon_only_settings.dart';
+export 'src/models/call_params.dart';
 export 'package:telnyx_webrtc/telnyx_webrtc.dart' show WidgetSettings, AudioVisualizerConfig;
