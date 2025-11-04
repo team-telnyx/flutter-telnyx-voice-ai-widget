@@ -107,12 +107,16 @@ class MyApp extends StatelessWidget {
   - `widgetSettingOverride` (optional): Widget settings override
 
 #### Call Parameters
+Note that these are primarily used for logging and call referencing except in the case of custom headers - which can be used to pass dynamic variables to your assistant. The call will always be routed to the AI assistant after anonymous login.
+
 - `callParams` (optional): Custom parameters for call initialization
   - `callerName` (optional): The caller name to display (defaults to 'AI Assistant User')
   - `callerNumber` (optional): The caller number to use (defaults to 'anonymous')
   - `destinationNumber` (optional): The destination number to call (defaults to 'xxx')
   - `clientState` (optional): Custom client state data (defaults to empty string)
   - `customHeaders` (optional): Custom headers to include with the call
+
+Note that you can also provide customHeaders in the newInvite method. These headers need to start with the X- prefix and will be mapped to [dynamic variables](https://developers.telnyx.com/docs/inference/ai-assistants/dynamic-variables) in the AI assistant (e.g., X-Account-Number becomes {{account_number}}). Hyphens in header names are converted to underscores in variable names.
 
 ```dart
 TelnyxVoiceAiWidget(
@@ -131,6 +135,8 @@ TelnyxVoiceAiWidget(
   ),
 )
 ```
+
+For the customHeaders here, the variables will be available in the portal settings for the AI assistant as `{{custom_header}}` and `{{user_id}}`.
 
 ### Widget States
 

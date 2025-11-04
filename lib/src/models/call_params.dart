@@ -13,6 +13,9 @@ class CallParams {
   final String? clientState;
 
   /// Custom headers to include with the call
+  ///
+  /// These headers need to start with the X- prefix and will be mapped to dynamic variables in the AI assistant (e.g., X-Account-Number becomes {{account_number}}).
+  /// Hyphens in header names are converted to underscores in variable names.
   final Map<String, String>? customHeaders;
 
   const CallParams({
