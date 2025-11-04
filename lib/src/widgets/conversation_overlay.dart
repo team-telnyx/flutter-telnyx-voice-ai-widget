@@ -11,7 +11,7 @@ class ConversationOverlay extends StatefulWidget {
   final List<TranscriptItem> transcript;
   final WidgetTheme theme;
   final VoidCallback onClose;
-  final Function(String) onSendMessage;
+  final Function(String message, {String? base64Image}) onSendMessage;
   final String? avatarUrl;
   final WidgetSettings? settings;
   final AgentStatus agentStatus;

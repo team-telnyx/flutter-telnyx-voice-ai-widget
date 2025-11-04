@@ -1,3 +1,4 @@
+[![Pub Version](https://img.shields.io/pub/v/flutter_telnyx_voice_ai_widget?color=blue&logo=telnyx)]([https://pub.dev/packages/telnyx_webrtc](https://pub.dev/packages/flutter_telnyx_voice_ai_widget))
 # Flutter Telnyx Voice AI Widget
 
 A Flutter widget that provides a standalone voice AI assistant interface using the Telnyx WebRTC SDK.

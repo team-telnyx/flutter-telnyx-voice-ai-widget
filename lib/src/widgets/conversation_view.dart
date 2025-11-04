@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:telnyx_webrtc/model/transcript_item.dart';
 import 'package:telnyx_webrtc/telnyx_webrtc.dart';
 import '../models/widget_theme.dart';
@@ -12,7 +16,7 @@ class ConversationView extends StatefulWidget {
   final List<TranscriptItem> transcript;
   final WidgetTheme theme;
   final VoidCallback onClose;
-  final Function(String) onSendMessage;
+  final Function(String message, {String? base64Image}) onSendMessage;
   final bool isFullScreen;
   final String? avatarUrl;
   final WidgetSettings? settings;
@@ -47,6 +51,9 @@ class ConversationView extends StatefulWidget {
 class _ConversationViewState extends State<ConversationView> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _imagePicker = ImagePicker();
+  File? _selectedImage;
+  String? _selectedImageBase64;
 
   @override
   void didUpdateWidget(ConversationView oldWidget) {
@@ -68,11 +75,59 @@ class _ConversationViewState extends State<ConversationView> {
     }
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final File imageFile = File(image.path);
+        final Uint8List imageBytes = await imageFile.readAsBytes();
+        final String base64String = base64Encode(imageBytes);
+
+        setState(() {
+          _selectedImage = imageFile;
+          _selectedImageBase64 = base64String;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+      
+      // Show user-friendly error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to pick image. Please check permissions and try again.',
+              style: TextStyle(color: widget.theme.textColor),
+            ),
+            backgroundColor: Colors.red.shade800,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _selectedImage = null;
+      _selectedImageBase64 = null;
+    });
+  }
+
   void _sendMessage() {
     final message = _messageController.text.trim();
-    if (message.isNotEmpty) {
-      widget.onSendMessage(message);
+    if (message.isNotEmpty || _selectedImageBase64 != null) {
+      final messageText = message.isNotEmpty ? message : 'Image attached';
+      widget.onSendMessage(messageText, base64Image: _selectedImageBase64);
       _messageController.clear();
+      _removeImage();
     }
   }
 
@@ -229,54 +284,112 @@ class _ConversationViewState extends State<ConversationView> {
                       top: false,
                       child: Container(
                         padding: const EdgeInsets.all(16),
-                        child: Row(
+                        child: Column(
                           children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _messageController,
-                                decoration: InputDecoration(
-                                  hintText: 'Type a message...',
-                                  hintStyle: TextStyle(
-                                    color: widget.theme.secondaryTextColor,
-                                  ),
-                                  filled: true,
-                                  fillColor: textBoxColor,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                    borderSide: BorderSide(
-                                        color: widget.theme.borderColor),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                    borderSide: BorderSide(
-                                        color: widget.theme.borderColor),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                    borderSide: BorderSide(
-                                        color: widget.theme.primaryColor),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 16,
-                                  ),
-                                ),
-                                style: TextStyle(color: widget.theme.textColor),
-                                onSubmitted: (_) => _sendMessage(),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              onPressed: _sendMessage,
-                              icon: Container(
+                            // Image preview
+                            if (_selectedImage != null) ...[
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 12),
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: widget.theme.primaryColor,
-                                  shape: BoxShape.circle,
+                                  color: textBoxColor,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: widget.theme.borderColor),
                                 ),
-                                child: const Icon(Icons.send,
-                                    color: Colors.white, size: 20),
+                                child: Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: Image.file(
+                                        _selectedImage!,
+                                        width: 60,
+                                        height: 60,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Image selected',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: widget.theme.textColor,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: _removeImage,
+                                      icon: const Icon(Icons.close, size: 20),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: Colors.red.withValues(alpha: 0.1),
+                                        foregroundColor: Colors.red,
+                                        minimumSize: const Size(32, 32),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
+                            ],
+                            // Input row
+                            Row(
+                              children: [
+                                IconButton(
+                                  onPressed: _pickImage,
+                                  icon: const Icon(Icons.image),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: widget.theme.buttonColor,
+                                    foregroundColor: widget.theme.textColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _messageController,
+                                    decoration: InputDecoration(
+                                      hintText: 'Type a message...',
+                                      hintStyle: TextStyle(
+                                        color: widget.theme.secondaryTextColor,
+                                      ),
+                                      filled: true,
+                                      fillColor: textBoxColor,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                        borderSide: BorderSide(
+                                            color: widget.theme.borderColor),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                        borderSide: BorderSide(
+                                            color: widget.theme.borderColor),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(24),
+                                        borderSide: BorderSide(
+                                            color: widget.theme.primaryColor),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 16,
+                                      ),
+                                    ),
+                                    style: TextStyle(color: widget.theme.textColor),
+                                    onSubmitted: (_) => _sendMessage(),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  onPressed: _sendMessage,
+                                  icon: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: widget.theme.primaryColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.send,
+                                        color: Colors.white, size: 20),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
