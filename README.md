@@ -18,6 +18,7 @@ A Flutter widget that provides a standalone voice AI assistant interface using t
 - **Call Controls**: Mute/unmute and end call functionality
 - **Conversation View**: Full transcript with message history
 - **Responsive Design**: Adapts to different screen sizes
+- **Custom Call Parameters**: Configure caller name, number, destination, and client state
 
 ## Installation
 
@@ -104,6 +105,38 @@ class MyApp extends StatelessWidget {
   - `size` (required): Size of the circular icon widget
   - `logoIconSettings` (optional): Settings for customizing the logo/avatar icon
   - `widgetSettingOverride` (optional): Widget settings override
+
+#### Call Parameters
+Note that these are primarily used for logging and call referencing except in the case of custom headers - which can be used to pass dynamic variables to your assistant. The call will always be routed to the AI assistant after anonymous login.
+
+- `callParams` (optional): Custom parameters for call initialization
+  - `callerName` (optional): The caller name to display (defaults to 'AI Assistant User')
+  - `callerNumber` (optional): The caller number to use (defaults to 'anonymous')
+  - `destinationNumber` (optional): The destination number to call (defaults to 'xxx')
+  - `clientState` (optional): Custom client state data (defaults to empty string)
+  - `customHeaders` (optional): Custom headers to include with the call
+
+Note that you can also provide customHeaders in the newInvite method. These headers need to start with the X- prefix and will be mapped to [dynamic variables](https://developers.telnyx.com/docs/inference/ai-assistants/dynamic-variables) in the AI assistant (e.g., X-Account-Number becomes {{account_number}}). Hyphens in header names are converted to underscores in variable names.
+
+```dart
+TelnyxVoiceAiWidget(
+  assistantId: 'your-assistant-id',
+  height: 60,
+  width: 200,
+  callParams: const CallParams(
+    callerName: 'John Doe',
+    callerNumber: '+1234567890',
+    destinationNumber: '+0987654321',
+    clientState: 'custom-client-state-data',
+    customHeaders: {
+      'X-Custom-Header': 'custom-value',
+      'X-User-ID': 'user-123',
+    },
+  ),
+)
+```
+
+For the customHeaders here, the variables will be available in the portal settings for the AI assistant as `{{custom_header}}` and `{{user_id}}`.
 
 ### Widget States
 

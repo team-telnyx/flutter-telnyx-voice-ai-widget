@@ -11,6 +11,7 @@ import 'package:telnyx_webrtc/model/telnyx_socket_error.dart';
 import 'package:uuid/uuid.dart';
 import '../models/agent_status.dart';
 import '../models/widget_state.dart';
+import '../models/call_params.dart';
 import 'package:telnyx_webrtc/telnyx_webrtc.dart';
 
 /// Service that manages the Telnyx client and widget state
@@ -25,6 +26,7 @@ class WidgetService extends ChangeNotifier {
   bool _isMuted = false;
   bool _isCallActive = false;
   String? _assistantId;
+  CallParams? _callParams;
 
   // Audio visualization data
   final List<double> _inboundAudioLevels = [];
@@ -92,10 +94,11 @@ class WidgetService extends ChangeNotifier {
 
   /// Initialize the widget with assistant ID
   Future<void> initialize(String assistantId,
-      {WidgetSettings? widgetSettingOverride}) async {
+      {WidgetSettings? widgetSettingOverride, CallParams? callParams}) async {
     try {
       _assistantId = assistantId;
       _widgetSettingOverride = widgetSettingOverride;
+      _callParams = callParams;
       _updateWidgetState(AssistantWidgetState.loading);
 
       // Set up socket message observer
@@ -114,12 +117,13 @@ class WidgetService extends ChangeNotifier {
     try {
       _updateWidgetState(AssistantWidgetState.connecting);
 
-      // Make a call to a hardcoded destination
+      // Make a call using CallParams if provided, otherwise use defaults
       final call = _telnyxClient.newInvite(
-          'AI Assistant User', // callerName
-          'anonymous', // callerNumber
-          'xxx', // destinationNumber
-          '', // clientState
+          _callParams?.callerName ?? 'AI Assistant User', // callerName
+          _callParams?.callerNumber ?? 'anonymous', // callerNumber
+          _callParams?.destinationNumber ?? 'xxx', // destinationNumber
+          _callParams?.clientState ?? '', // clientState
+          customHeaders: _callParams?.customHeaders ?? const {},
           debug: true);
 
       // Set up call quality metrics observation
@@ -136,12 +140,13 @@ class WidgetService extends ChangeNotifier {
       _isIconOnlyConnecting = true;
       notifyListeners();
 
-      // Make a call to a hardcoded destination
+      // Make a call using CallParams if provided, otherwise use defaults
       final call = _telnyxClient.newInvite(
-          'AI Assistant User', // callerName
-          'anonymous', // callerNumber
-          'xxx', // destinationNumber
-          '', // clientState
+          _callParams?.callerName ?? 'AI Assistant User', // callerName
+          _callParams?.callerNumber ?? 'anonymous', // callerNumber
+          _callParams?.destinationNumber ?? 'xxx', // destinationNumber
+          _callParams?.clientState ?? '', // clientState
+          customHeaders: _callParams?.customHeaders ?? const {},
           debug: true);
 
       // Set up call quality metrics observation

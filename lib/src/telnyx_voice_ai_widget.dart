@@ -6,6 +6,7 @@ import 'models/widget_theme.dart';
 import 'models/widget_state.dart';
 import 'models/logo_icon_settings.dart';
 import 'models/icon_only_settings.dart';
+import 'models/call_params.dart';
 import 'services/widget_service.dart';
 import 'widgets/conversation_overlay.dart';
 import 'widgets/loading_widget.dart';
@@ -52,6 +53,9 @@ class TelnyxVoiceAiWidget extends StatefulWidget {
   final void Function(VoidCallback hideOverlay, VoidCallback showOverlay)?
       onOverlayControllerReady;
 
+  /// Optional call parameters to customize call initialization, this is primarily for logging purposes and does not effect where the call is routed. A call will always be routed to the assistant.
+  final CallParams? callParams;
+
   const TelnyxVoiceAiWidget({
     super.key,
     required this.assistantId,
@@ -65,6 +69,7 @@ class TelnyxVoiceAiWidget extends StatefulWidget {
     this.iconOnlySettings,
     this.onTranscriptUpdate,
     this.onOverlayControllerReady,
+    this.callParams,
   }) : assert(
           (iconOnlySettings != null) || (height != null && width != null),
           'Either iconOnlySettings must be provided, or both height and width must be provided for regular mode',
@@ -94,7 +99,8 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
         widget.iconOnlySettings?.widgetSettingOverride ??
             widget.widgetSettingOverride;
     await _widgetService.initialize(widget.assistantId,
-        widgetSettingOverride: widgetSettingOverride);
+        widgetSettingOverride: widgetSettingOverride,
+        callParams: widget.callParams);
 
     // Set up transcript callback if provided
     if (widget.onTranscriptUpdate != null) {

@@ -429,6 +429,17 @@ class _MyHomePageState extends State<MyHomePage> {
                                 borderWidth: 2,
                               ),
                             ),
+                            /*callParams: CallParams(
+                              callerName: 'John Doe',
+                              callerNumber: '+1234567890',
+                              destinationNumber: 'sip:assistant@example.com',
+                              clientState: 'custom-state-data',
+                              customHeaders: {
+                                'X-Custom-Header': 'custom-value',
+                                'X-User-ID': '12345',
+                                'X-Session-ID': 'session-abc-123',
+                              },
+                            ),*/
                           )
                         : const Text('Please create widget with icon-only mode selected'))
                     : (_width != null && _height != null
@@ -454,6 +465,17 @@ class _MyHomePageState extends State<MyHomePage> {
                             widgetSettingOverride: WidgetSettings(
                               startCallText: "Let's go!",
                               logoIconUrl: 'https://example.com/logo.png',
+                            ),
+                            callParams: CallParams(
+                              callerName: 'John Doe',
+                              callerNumber: '+1234567890',
+                              destinationNumber: 'sip:assistant@example.com',
+                              clientState: 'custom-state-data',
+                              customHeaders: {
+                                'X-Custom-Header': 'custom-value',
+                                'X-User-ID': '12345',
+                                'X-Session-ID': 'session-abc-123',
+                              },
                             ),*/
                           )
                         : const Text('Please create widget with regular mode selected')),
