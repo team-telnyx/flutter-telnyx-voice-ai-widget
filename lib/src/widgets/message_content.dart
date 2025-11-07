@@ -9,6 +9,7 @@ class MessageContent extends StatelessWidget {
   final bool isUser;
   final WidgetTheme theme;
   final Color? textColor;
+  final bool showImages;
 
   const MessageContent({
     super.key,
@@ -16,6 +17,7 @@ class MessageContent extends StatelessWidget {
     required this.isUser,
     required this.theme,
     this.textColor,
+    this.showImages = true,
   });
 
   @override
@@ -35,10 +37,10 @@ class MessageContent extends StatelessWidget {
               fontSize: 14,
             ),
           ),
-          if (item.hasImages()) const SizedBox(height: 8),
+          if (showImages && item.hasImages()) const SizedBox(height: 8),
         ],
         // Display images if available
-        if (item.hasImages()) ...[
+        if (showImages && item.hasImages()) ...[
           Wrap(
             spacing: 8,
             runSpacing: 8,

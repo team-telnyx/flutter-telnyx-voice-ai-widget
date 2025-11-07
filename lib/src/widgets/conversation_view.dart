@@ -119,6 +119,28 @@ class _ConversationViewState extends State<ConversationView> with WidgetsBinding
     }
   }
 
+  Widget _buildImageDisplay(TranscriptItem item, bool isUser, Color messageTextColor) {
+    if (!item.hasImages() || item.imageUrls == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: isUser ? WrapAlignment.end : WrapAlignment.start,
+      children: item.imageUrls!.map((imageUrl) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: _DataUrlImageWidget(
+            dataUrl: imageUrl,
+            width: 150,
+            height: 150,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   Future<void> _getImage(ImageSource source) async {
     try {
       // Notify that we're starting to pick an image (prevents overlay from closing)
@@ -310,20 +332,34 @@ class _ConversationViewState extends State<ConversationView> with WidgetsBinding
                                   const SizedBox(width: 8),
                                 ],
                                 Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: isUser
-                                          ? userMessageColor
-                                          : assistantMessageColor,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: MessageContent(
-                                      item: item,
-                                      isUser: isUser,
-                                      theme: widget.theme,
-                                      textColor: messageTextColor,
-                                    ),
+                                  child: Column(
+                                    crossAxisAlignment: isUser
+                                        ? CrossAxisAlignment.end
+                                        : CrossAxisAlignment.start,
+                                    children: [
+                                      // Display images above the message bubble
+                                      if (item.hasImages()) ...[
+                                        _buildImageDisplay(item, isUser, messageTextColor),
+                                        const SizedBox(height: 8),
+                                      ],
+                                      // Message bubble (text only)
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: isUser
+                                              ? userMessageColor
+                                              : assistantMessageColor,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: MessageContent(
+                                          item: item,
+                                          isUser: isUser,
+                                          theme: widget.theme,
+                                          textColor: messageTextColor,
+                                          showImages: false,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                                 if (isUser) ...[
@@ -348,10 +384,16 @@ class _ConversationViewState extends State<ConversationView> with WidgetsBinding
                     // Message input
                     SafeArea(
                       top: false,
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).viewInsets.bottom > 0
+                              ? 8.0
+                              : 0.0,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
                             // Image preview
                             if (_selectedImage != null) ...[
                               Container(
@@ -469,6 +511,7 @@ class _ConversationViewState extends State<ConversationView> with WidgetsBinding
                           ],
                         ),
                       ),
+                      ),
                     ),
                   ],
                 ),
@@ -498,5 +541,98 @@ class _ConversationViewState extends State<ConversationView> with WidgetsBinding
         child: content,
       );
     }
+  }
+}
+
+/// Widget to display images from data URLs
+class _DataUrlImageWidget extends StatefulWidget {
+  const _DataUrlImageWidget({
+    required this.dataUrl,
+    this.width = 150,
+    this.height = 150,
+  });
+
+  final String dataUrl;
+  final double width;
+  final double height;
+
+  @override
+  State<_DataUrlImageWidget> createState() => _DataUrlImageWidgetState();
+}
+
+class _DataUrlImageWidgetState extends State<_DataUrlImageWidget> {
+  Uint8List? _imageData;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _decodeDataUrl();
+  }
+
+  @override
+  void didUpdateWidget(_DataUrlImageWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.dataUrl != oldWidget.dataUrl) {
+      _decodeDataUrl();
+    }
+  }
+
+  void _decodeDataUrl() {
+    setState(() {
+      _imageData = null;
+      _error = null;
+    });
+    try {
+      final uri = Uri.parse(widget.dataUrl);
+      if (uri.scheme != 'data') {
+        throw const FormatException('Invalid scheme: expected "data"');
+      }
+      if (uri.data == null) {
+        throw const FormatException('Data URL contains no image data');
+      }
+      _imageData = uri.data!.contentAsBytes();
+    } catch (e) {
+      _error = e;
+    } finally {
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null) {
+      return _imageErrorWidget();
+    }
+
+    if (_imageData == null) {
+      return Container(
+        width: widget.width,
+        height: widget.height,
+        color: Colors.grey[300],
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    return Image.memory(
+      _imageData!,
+      width: widget.width,
+      height: widget.height,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => _imageErrorWidget(),
+    );
+  }
+
+  Widget _imageErrorWidget() {
+    return Container(
+      width: widget.width,
+      height: widget.height,
+      color: Colors.grey[300],
+      child: const Icon(Icons.image_not_supported),
+    );
   }
 }

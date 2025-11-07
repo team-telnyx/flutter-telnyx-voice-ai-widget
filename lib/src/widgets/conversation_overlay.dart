@@ -125,7 +125,11 @@ class _ConversationOverlayState extends State<ConversationOverlay>
               ),
               
               // Main conversation content with slide animation
-              Positioned.fill(
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: MediaQuery.of(context).viewInsets.bottom,
                 child: Transform.translate(
                   offset: Offset(0, MediaQuery.of(context).size.height * _slideAnimation.value),
                   child: Container(
