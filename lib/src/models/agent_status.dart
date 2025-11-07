@@ -2,12 +2,15 @@
 enum AgentStatus {
   /// Agent is processing user input and thinking
   thinking,
-  
+
   /// Agent is waiting and can be interrupted
   waiting,
-  
+
   /// Agent is idle/not active
   idle,
+
+  /// Agent is processing an image
+  processingImage,
 }
 
 /// Extension to provide default display text for agent status
@@ -21,6 +24,8 @@ extension AgentStatusExtension on AgentStatus {
         return 'Speak to interrupt'; // Default fallback
       case AgentStatus.idle:
         return '';
+      case AgentStatus.processingImage:
+        return 'Processing image...'; // Not overridable by widget settings
     }
   }
   

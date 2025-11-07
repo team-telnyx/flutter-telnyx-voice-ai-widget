@@ -46,6 +46,7 @@ class _ConversationOverlayState extends State<ConversationOverlay>
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
   late Animation<double> _fadeAnimation;
+  bool _isPickingImage = false;
 
   @override
   void initState() {
@@ -82,13 +83,24 @@ class _ConversationOverlayState extends State<ConversationOverlay>
     super.dispose();
   }
 
+  void _handleImagePickingStateChanged(bool isPickingImage) {
+    setState(() {
+      _isPickingImage = isPickingImage;
+    });
+  }
+
   Future<void> _close() async {
+    // Don't allow closing while picking an image
+    if (_isPickingImage) {
+      return;
+    }
+
     // Add haptic feedback
     HapticFeedback.lightImpact();
-    
+
     // Animate out
     await _animationController.reverse();
-    
+
     // Call the close callback
     widget.onClose();
   }
@@ -150,6 +162,7 @@ class _ConversationOverlayState extends State<ConversationOverlay>
                               audioLevels: widget.audioLevels,
                               onToggleMute: widget.onToggleMute,
                               onEndCall: widget.onEndCall,
+                              onImagePickingStateChanged: _handleImagePickingStateChanged,
                             ),
                           ),
                         ],

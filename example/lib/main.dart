@@ -62,25 +62,45 @@ class _MyHomePageState extends State<MyHomePage> {
   
   Future<void> _requestPermissions() async {
     // Request microphone permission
-    final microphoneStatus = await Permission.microphone.request();
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.microphone,
+      Permission.camera,
+      Permission.photos,
+    ].request();
     
     // Request bluetooth permissions for Android 12+
     if (await Permission.bluetoothConnect.isGranted == false) {
       await Permission.bluetoothConnect.request();
     }
     
-    if (microphoneStatus.isDenied || microphoneStatus.isPermanentlyDenied) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Microphone permission is required for voice calls'),
-            action: SnackBarAction(
-              label: 'Settings',
-              onPressed: () => openAppSettings(),
-            ),
+    if (statuses[Permission.microphone]!.isDenied ||
+        statuses[Permission.microphone]!.isPermanentlyDenied) {
+      _showPermissionSnackbar('Microphone permission is required for voice calls');
+    }
+    
+    if (statuses[Permission.camera]!.isDenied ||
+        statuses[Permission.camera]!.isPermanentlyDenied) {
+      _showPermissionSnackbar('Camera permission is required for sending photos');
+    }
+    
+    if (statuses[Permission.photos]!.isDenied ||
+        statuses[Permission.photos]!.isPermanentlyDenied) {
+      _showPermissionSnackbar(
+          'Photo library permission is required for sending photos');
+    }
+  }
+
+  void _showPermissionSnackbar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: () => openAppSettings(),
           ),
-        );
-      }
+        ),
+      );
     }
   }
 

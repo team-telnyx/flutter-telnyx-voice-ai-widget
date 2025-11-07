@@ -26,6 +26,7 @@ class ConversationView extends StatefulWidget {
   final List<double> audioLevels;
   final VoidCallback onToggleMute;
   final VoidCallback onEndCall;
+  final Function(bool isPickingImage)? onImagePickingStateChanged;
 
   const ConversationView({
     super.key,
@@ -42,18 +43,61 @@ class ConversationView extends StatefulWidget {
     required this.audioLevels,
     required this.onToggleMute,
     required this.onEndCall,
+    this.onImagePickingStateChanged,
   });
 
   @override
   State<ConversationView> createState() => _ConversationViewState();
 }
 
-class _ConversationViewState extends State<ConversationView> {
+class _ConversationViewState extends State<ConversationView> with WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
   File? _selectedImage;
   String? _selectedImageBase64;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _retrieveLostImageData();
+    }
+  }
+
+  Future<void> _retrieveLostImageData() async {
+    try {
+      // Notify that we're retrieving lost image data (prevents overlay from closing)
+      widget.onImagePickingStateChanged?.call(true);
+
+      final LostDataResponse response = await _imagePicker.retrieveLostData();
+      if (response.isEmpty || response.file == null) {
+        return;
+      }
+
+      final XFile image = response.file!;
+      final File imageFile = File(image.path);
+      final Uint8List imageBytes = await imageFile.readAsBytes();
+      final String base64String = base64Encode(imageBytes);
+
+      if (mounted) {
+        setState(() {
+          _selectedImage = imageFile;
+          _selectedImageBase64 = base64String;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error retrieving lost image data: $e');
+    } finally {
+      // Notify that we're done retrieving (re-enable overlay closing)
+      widget.onImagePickingStateChanged?.call(false);
+    }
+  }
 
   @override
   void didUpdateWidget(ConversationView oldWidget) {
@@ -75,10 +119,13 @@ class _ConversationViewState extends State<ConversationView> {
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _getImage(ImageSource source) async {
     try {
+      // Notify that we're starting to pick an image (prevents overlay from closing)
+      widget.onImagePickingStateChanged?.call(true);
+
       final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         maxWidth: 1024,
         maxHeight: 1024,
         imageQuality: 85,
@@ -89,14 +136,16 @@ class _ConversationViewState extends State<ConversationView> {
         final Uint8List imageBytes = await imageFile.readAsBytes();
         final String base64String = base64Encode(imageBytes);
 
-        setState(() {
-          _selectedImage = imageFile;
-          _selectedImageBase64 = base64String;
-        });
+        if (mounted) {
+          setState(() {
+            _selectedImage = imageFile;
+            _selectedImageBase64 = base64String;
+          });
+        }
       }
     } catch (e) {
       debugPrint('Error picking image: $e');
-      
+
       // Show user-friendly error message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -111,6 +160,9 @@ class _ConversationViewState extends State<ConversationView> {
           ),
         );
       }
+    } finally {
+      // Notify that we're done picking (re-enable overlay closing)
+      widget.onImagePickingStateChanged?.call(false);
     }
   }
 
@@ -135,6 +187,7 @@ class _ConversationViewState extends State<ConversationView> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -156,11 +209,23 @@ class _ConversationViewState extends State<ConversationView> {
         ? const Color(0xFF222127) // Dark mode: #222127
         : const Color(0xFFFFFDF4); // Light mode: #fffdf4
 
-    // Filter out only empty messages
+    final Color userMessageColor = isDarkMode
+        ? const Color(0xFF212025) // Dark mode: #212025
+        : const Color(0xFFFEFDF4); // Light mode: #fefdf4
+
+    final Color assistantMessageColor = isDarkMode
+        ? const Color(0xFF48484C) // Dark mode: #48484c (lighter than background)
+        : const Color(0xFFEFECDA); // Light mode: #efecda (lighter than background)
+
+    final Color messageTextColor = isDarkMode
+        ? widget.theme.textColor // Dark mode: use theme color (white)
+        : const Color(0xFF000000); // Light mode: use black for readability
+
     // Deduplicate by ID - keep only the latest version of each message
     final seenIds = <String>{};
     final filteredTranscript = widget.transcript
-        .where((item) => item.content.trim().isNotEmpty)
+        .where((item) =>
+            item.content.trim().isNotEmpty) // Filter out partial messages
         .toList();
 
     final displayTranscript = filteredTranscript
@@ -249,14 +314,15 @@ class _ConversationViewState extends State<ConversationView> {
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
                                       color: isUser
-                                          ? widget.theme.primaryColor
-                                          : widget.theme.buttonColor,
+                                          ? userMessageColor
+                                          : assistantMessageColor,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: MessageContent(
                                       item: item,
                                       isUser: isUser,
                                       theme: widget.theme,
+                                      textColor: messageTextColor,
                                     ),
                                   ),
                                 ),
@@ -334,14 +400,23 @@ class _ConversationViewState extends State<ConversationView> {
                             Row(
                               children: [
                                 IconButton(
-                                  onPressed: _pickImage,
+                                  onPressed: () => _getImage(ImageSource.gallery),
                                   icon: const Icon(Icons.image),
                                   style: IconButton.styleFrom(
-                                    backgroundColor: widget.theme.buttonColor,
+                                    backgroundColor: userMessageColor,
                                     foregroundColor: widget.theme.textColor,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(width: 4),
+                                IconButton(
+                                  onPressed: () => _getImage(ImageSource.camera),
+                                  icon: const Icon(Icons.camera_alt),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: userMessageColor,
+                                    foregroundColor: widget.theme.textColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
                                 Expanded(
                                   child: TextField(
                                     controller: _messageController,
@@ -382,11 +457,11 @@ class _ConversationViewState extends State<ConversationView> {
                                   icon: Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: widget.theme.primaryColor,
+                                      color: userMessageColor,
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.send,
-                                        color: Colors.white, size: 20),
+                                    child: Icon(Icons.send,
+                                        color: widget.theme.textColor, size: 20),
                                   ),
                                 ),
                               ],

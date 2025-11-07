@@ -289,6 +289,11 @@ class WidgetService extends ChangeNotifier {
         _previousTranscript = List.from(fullTranscript);
       }
 
+      // Update overlay if it's visible
+      if (_conversationOverlay != null) {
+        _conversationOverlay!.markNeedsBuild();
+      }
+
       notifyListeners();
     };
 
@@ -371,9 +376,25 @@ class WidgetService extends ChangeNotifier {
     final item = params.item;
     if (item != null) {
       if (item.role == 'user') {
-        // User finished speaking, agent is thinking
-        debugPrint('🤔 User finished speaking - Agent thinking');
-        _updateAgentStatus(AgentStatus.thinking);
+        // Check if the user message contains any images
+        bool hasImages = false;
+        if (item.content != null) {
+          for (final content in item.content!) {
+            if (content.type == 'image_url' && content.imageUrl != null) {
+              hasImages = true;
+              break;
+            }
+          }
+        }
+
+        // User finished speaking, agent is thinking or processing image
+        if (hasImages) {
+          debugPrint('🖼️ User sent message with image - Agent processing image');
+          _updateAgentStatus(AgentStatus.processingImage);
+        } else {
+          debugPrint('🤔 User finished speaking - Agent thinking');
+          _updateAgentStatus(AgentStatus.thinking);
+        }
 
         // Add user message to transcript if it has content
         if (item.content != null && item.content!.isNotEmpty) {
@@ -446,7 +467,7 @@ class WidgetService extends ChangeNotifier {
       final existing = _transcript[existingIndex];
       _transcript[existingIndex] = TranscriptItem(
         role: existing.role,
-        content: existing.content + delta,
+        content: existing.content.endsWith(delta) ? existing.content : existing.content + delta,
         timestamp: existing.timestamp,
         id: existing.id,
         isPartial: true,
