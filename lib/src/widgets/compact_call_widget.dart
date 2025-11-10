@@ -59,6 +59,7 @@ class CompactCallWidget extends StatelessWidget {
                       theme: theme,
                       settings: settings,
                       overlayState: overlayState,
+                      onEndCall: onEndCall,
                     ),
                   const Spacer(),
                   _CompactControlButton(
@@ -387,11 +388,13 @@ class _OverflowMenuButton extends StatefulWidget {
   final WidgetTheme theme;
   final WidgetSettings? settings;
   final OverlayState? overlayState;
+  final VoidCallback onEndCall;
 
   const _OverflowMenuButton({
     required this.theme,
     required this.settings,
     this.overlayState,
+    required this.onEndCall,
   });
 
   @override
@@ -401,6 +404,7 @@ class _OverflowMenuButton extends StatefulWidget {
 class _OverflowMenuButtonState extends State<_OverflowMenuButton> {
   bool _isMenuOpen = false;
   OverlayEntry? _menuOverlayEntry;
+  OverlayEntry? _dialogOverlayEntry;
 
   /// Show the overflow menu with available options
   Future<void> _showOverflowMenuWithAnchor(BuildContext anchorContext) async {
@@ -524,8 +528,24 @@ class _OverflowMenuButtonState extends State<_OverflowMenuButton> {
         items: menuItems,
       );
 
-      if (value != null) {
-        _handleMenuAction(value);
+      if (value != null && mounted) {
+        // Get the action label for the dialog
+        String actionLabel;
+        switch (value) {
+          case 'give_feedback':
+            actionLabel = 'Give Feedback';
+            break;
+          case 'view_history':
+            actionLabel = 'View Conversation History';
+            break;
+          case 'report_issue':
+            actionLabel = 'Report Issue';
+            break;
+          default:
+            actionLabel = value;
+        }
+        // ignore: use_build_context_synchronously
+        _showConfirmationDialog(anchorContext, actionLabel, value);
       }
     } finally {
       if (mounted) {
@@ -562,7 +582,7 @@ class _OverflowMenuButtonState extends State<_OverflowMenuButton> {
           label: 'Give Feedback',
           onTap: () {
             _closeCustomMenu();
-            _handleMenuAction('give_feedback');
+            _showConfirmationDialog(anchorContext, 'Give Feedback', 'give_feedback');
           },
         ),
       );
@@ -575,7 +595,7 @@ class _OverflowMenuButtonState extends State<_OverflowMenuButton> {
           label: 'View History',
           onTap: () {
             _closeCustomMenu();
-            _handleMenuAction('view_history');
+            _showConfirmationDialog(anchorContext, 'View Conversation History', 'view_history');
           },
         ),
       );
@@ -588,7 +608,7 @@ class _OverflowMenuButtonState extends State<_OverflowMenuButton> {
           label: 'Report Issue',
           onTap: () {
             _closeCustomMenu();
-            _handleMenuAction('report_issue');
+            _showConfirmationDialog(anchorContext, 'Report Issue', 'report_issue');
           },
         ),
       );
@@ -684,11 +704,205 @@ class _OverflowMenuButtonState extends State<_OverflowMenuButton> {
     }
   }
 
+  /// Show confirmation dialog before ending call and opening URL
+  Future<void> _showConfirmationDialog(
+    BuildContext context,
+    String actionLabel,
+    String action,
+  ) async {
+    // If overlayState is provided, use custom overlay for proper z-ordering
+    if (widget.overlayState != null) {
+      _showCustomConfirmationDialog(actionLabel.toLowerCase(), action);
+      return;
+    }
+
+    // Fallback to standard dialog
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: widget.theme.backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: widget.theme.borderColor),
+          ),
+          title: Text(
+            'End call and ${actionLabel.toLowerCase()}',
+            style: TextStyle(
+              color: widget.theme.textColor,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Text(
+            'This will end your current call. Do you want to continue?',
+            style: TextStyle(
+              color: widget.theme.secondaryTextColor,
+              fontSize: 14,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(
+                'Close',
+                style: TextStyle(
+                  color: widget.theme.secondaryTextColor,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: widget.theme.buttonColor,
+                foregroundColor: widget.theme.textColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+              ),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If confirmed, end the call first, then open the URL
+    if (confirmed == true) {
+      // End the call
+      widget.onEndCall();
+
+      // Wait a moment for the call to end
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Then handle the menu action (open URL)
+      _handleMenuAction(action);
+    }
+  }
+
+  /// Show custom confirmation dialog using OverlayEntry for proper z-ordering
+  void _showCustomConfirmationDialog(String actionLabel, String action) {
+    if (widget.overlayState == null) return;
+
+    // Create the overlay entry
+    _dialogOverlayEntry = OverlayEntry(
+      builder: (context) => Material(
+        color: Colors.black.withValues(alpha: 0.5),
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 32),
+            constraints: const BoxConstraints(maxWidth: 400),
+            decoration: BoxDecoration(
+              color: widget.theme.backgroundColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: widget.theme.borderColor),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Title
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  child: Text(
+                    'End call and $actionLabel',
+                    style: TextStyle(
+                      color: widget.theme.textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                // Content
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: Text(
+                    'This will end your current call. Do you want to continue?',
+                    style: TextStyle(
+                      color: widget.theme.secondaryTextColor,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                // Actions
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: _closeCustomDialog,
+                        child: Text(
+                          'Close',
+                          style: TextStyle(
+                            color: widget.theme.secondaryTextColor,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () => _handleDialogConfirmation(action),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: widget.theme.buttonColor,
+                          foregroundColor: widget.theme.textColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                        ),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Insert the overlay entry at the top level
+    widget.overlayState!.insert(_dialogOverlayEntry!);
+  }
+
+  /// Handle dialog confirmation
+  Future<void> _handleDialogConfirmation(String action) async {
+    // Close the dialog first
+    _closeCustomDialog();
+
+    // End the call
+    widget.onEndCall();
+
+    // Wait a moment for the call to end
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Then handle the menu action (open URL)
+    _handleMenuAction(action);
+  }
+
+  /// Close the custom dialog
+  void _closeCustomDialog() {
+    _dialogOverlayEntry?.remove();
+    _dialogOverlayEntry = null;
+  }
+
   @override
   void dispose() {
     // Don't call setState during dispose
     _menuOverlayEntry?.remove();
     _menuOverlayEntry = null;
+    _dialogOverlayEntry?.remove();
+    _dialogOverlayEntry = null;
     _isMenuOpen = false;
     super.dispose();
   }
