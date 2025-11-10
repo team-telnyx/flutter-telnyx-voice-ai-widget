@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:telnyx_webrtc/telnyx_webrtc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/widget_theme.dart';
 import '../models/agent_status.dart';
 import 'audio_visualizer.dart';
@@ -45,11 +46,20 @@ class CompactCallWidget extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // Close button at the top
+            // Close button and overflow menu at the top
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
+                  // Overflow menu (only show if URLs are available)
+                  if (_hasMenuUrls(settings))
+                    _CompactControlButton(
+                      onPressed: () => _showOverflowMenu(context),
+                      icon: Icons.more_vert,
+                      backgroundColor: theme.buttonColor,
+                      iconColor: theme.textColor,
+                      theme: theme,
+                    ),
                   const Spacer(),
                   _CompactControlButton(
                     onPressed: onClose,
@@ -275,6 +285,143 @@ class CompactCallWidget extends StatelessWidget {
     }
     // Idle state - no text
     return 'Speak to interrupt';
+  }
+
+  /// Check if any menu URLs are available
+  bool _hasMenuUrls(WidgetSettings? settings) {
+    if (settings == null) return false;
+    return (settings.giveFeedbackUrl?.isNotEmpty == true) ||
+           (settings.reportIssueUrl?.isNotEmpty == true) ||
+           (settings.viewHistoryUrl?.isNotEmpty == true);
+  }
+
+  /// Show the overflow menu with available options
+  void _showOverflowMenu(BuildContext context) {
+    if (settings == null) return;
+
+    final List<PopupMenuEntry<String>> menuItems = [];
+
+    // Add Give Feedback option
+    if (settings!.giveFeedbackUrl?.isNotEmpty == true) {
+      menuItems.add(
+        PopupMenuItem<String>(
+          value: 'give_feedback',
+          child: Row(
+            children: [
+              Icon(
+                Icons.thumb_up,
+                color: theme.textColor,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Give Feedback',
+                style: TextStyle(color: theme.textColor),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Add View History option
+    if (settings!.viewHistoryUrl?.isNotEmpty == true) {
+      menuItems.add(
+        PopupMenuItem<String>(
+          value: 'view_history',
+          child: Row(
+            children: [
+              Icon(
+                Icons.history,
+                color: theme.textColor,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'View History',
+                style: TextStyle(color: theme.textColor),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Add Report Issue option
+    if (settings!.reportIssueUrl?.isNotEmpty == true) {
+      menuItems.add(
+        PopupMenuItem<String>(
+          value: 'report_issue',
+          child: Row(
+            children: [
+              Icon(
+                Icons.warning,
+                color: theme.textColor,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Report Issue',
+                style: TextStyle(color: theme.textColor),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (menuItems.isEmpty) return;
+
+    showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(0, 80, 20, 0),
+      color: theme.backgroundColor,
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.borderColor),
+      ),
+      items: menuItems,
+    ).then((String? value) {
+      if (value != null) {
+        _handleMenuAction(value);
+      }
+    });
+  }
+
+  /// Handle menu action selection
+  void _handleMenuAction(String action) {
+    String? url;
+    
+    switch (action) {
+      case 'give_feedback':
+        url = settings?.giveFeedbackUrl;
+        break;
+      case 'view_history':
+        url = settings?.viewHistoryUrl;
+        break;
+      case 'report_issue':
+        url = settings?.reportIssueUrl;
+        break;
+    }
+
+    if (url?.isNotEmpty == true) {
+      _launchUrl(url!);
+    }
+  }
+
+  /// Launch URL in external browser
+  Future<void> _launchUrl(String url) async {
+    try {
+      final Uri uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        debugPrint('Could not launch URL: $url');
+      }
+    } catch (e) {
+      debugPrint('Error launching URL: $e');
+    }
   }
 }
 
