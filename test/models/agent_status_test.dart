@@ -4,10 +4,11 @@ import 'package:flutter_telnyx_voice_ai_widget/src/models/agent_status.dart';
 void main() {
   group('AgentStatus', () {
     test('should have all expected values', () {
-      expect(AgentStatus.values.length, 3);
+      expect(AgentStatus.values.length, 4);
       expect(AgentStatus.values, contains(AgentStatus.thinking));
       expect(AgentStatus.values, contains(AgentStatus.waiting));
       expect(AgentStatus.values, contains(AgentStatus.idle));
+      expect(AgentStatus.values, contains(AgentStatus.processingImage));
     });
 
     group('displayText extension', () {
@@ -22,6 +23,10 @@ void main() {
       test('should return empty string for idle', () {
         expect(AgentStatus.idle.displayText, '');
       });
+
+      test('should return correct display text for processingImage', () {
+        expect(AgentStatus.processingImage.displayText, 'Processing image...');
+      });
     });
 
     group('canBeInterrupted extension', () {
@@ -29,6 +34,7 @@ void main() {
         expect(AgentStatus.waiting.canBeInterrupted, true);
         expect(AgentStatus.thinking.canBeInterrupted, false);
         expect(AgentStatus.idle.canBeInterrupted, false);
+        expect(AgentStatus.processingImage.canBeInterrupted, false);
       });
     });
 
@@ -37,6 +43,7 @@ void main() {
         expect(AgentStatus.thinking.isProcessing, true);
         expect(AgentStatus.waiting.isProcessing, false);
         expect(AgentStatus.idle.isProcessing, false);
+        expect(AgentStatus.processingImage.isProcessing, false);
       });
     });
   });
