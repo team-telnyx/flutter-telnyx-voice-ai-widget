@@ -17,6 +17,7 @@ class CompactCallWidget extends StatelessWidget {
   final VoidCallback onEndCall;
   final bool isExpanded;
   final Color? backgroundColor;
+  final OverlayState? overlayState;
 
   const CompactCallWidget({
     super.key,
@@ -31,6 +32,7 @@ class CompactCallWidget extends StatelessWidget {
     required this.onEndCall,
     this.isExpanded = false,
     this.backgroundColor,
+    this.overlayState,
   });
 
   @override
@@ -53,12 +55,10 @@ class CompactCallWidget extends StatelessWidget {
                 children: [
                   // Overflow menu (only show if URLs are available)
                   if (_hasMenuUrls(settings))
-                    _CompactControlButton(
-                      onPressed: () => _showOverflowMenu(context),
-                      icon: Icons.more_vert,
-                      backgroundColor: theme.buttonColor,
-                      iconColor: theme.textColor,
+                    _OverflowMenuButton(
                       theme: theme,
+                      settings: settings,
+                      overlayState: overlayState,
                     ),
                   const Spacer(),
                   _CompactControlButton(
@@ -294,135 +294,6 @@ class CompactCallWidget extends StatelessWidget {
            (settings.reportIssueUrl?.isNotEmpty == true) ||
            (settings.viewHistoryUrl?.isNotEmpty == true);
   }
-
-  /// Show the overflow menu with available options
-  void _showOverflowMenu(BuildContext context) {
-    if (settings == null) return;
-
-    final List<PopupMenuEntry<String>> menuItems = [];
-
-    // Add Give Feedback option
-    if (settings!.giveFeedbackUrl?.isNotEmpty == true) {
-      menuItems.add(
-        PopupMenuItem<String>(
-          value: 'give_feedback',
-          child: Row(
-            children: [
-              Icon(
-                Icons.thumb_up,
-                color: theme.textColor,
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Give Feedback',
-                style: TextStyle(color: theme.textColor),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Add View History option
-    if (settings!.viewHistoryUrl?.isNotEmpty == true) {
-      menuItems.add(
-        PopupMenuItem<String>(
-          value: 'view_history',
-          child: Row(
-            children: [
-              Icon(
-                Icons.history,
-                color: theme.textColor,
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'View History',
-                style: TextStyle(color: theme.textColor),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // Add Report Issue option
-    if (settings!.reportIssueUrl?.isNotEmpty == true) {
-      menuItems.add(
-        PopupMenuItem<String>(
-          value: 'report_issue',
-          child: Row(
-            children: [
-              Icon(
-                Icons.warning,
-                color: theme.textColor,
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Report Issue',
-                style: TextStyle(color: theme.textColor),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (menuItems.isEmpty) return;
-
-    showMenu<String>(
-      context: context,
-      position: const RelativeRect.fromLTRB(0, 80, 20, 0),
-      color: theme.backgroundColor,
-      elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.borderColor),
-      ),
-      items: menuItems,
-    ).then((String? value) {
-      if (value != null) {
-        _handleMenuAction(value);
-      }
-    });
-  }
-
-  /// Handle menu action selection
-  void _handleMenuAction(String action) {
-    String? url;
-    
-    switch (action) {
-      case 'give_feedback':
-        url = settings?.giveFeedbackUrl;
-        break;
-      case 'view_history':
-        url = settings?.viewHistoryUrl;
-        break;
-      case 'report_issue':
-        url = settings?.reportIssueUrl;
-        break;
-    }
-
-    if (url?.isNotEmpty == true) {
-      _launchUrl(url!);
-    }
-  }
-
-  /// Launch URL in external browser
-  Future<void> _launchUrl(String url) async {
-    try {
-      final Uri uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        debugPrint('Could not launch URL: $url');
-      }
-    } catch (e) {
-      debugPrint('Error launching URL: $e');
-    }
-  }
 }
 
 // Compact version of the control button
@@ -507,6 +378,392 @@ class _ExpandedControlButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// Overflow menu button with state management to prevent multiple menus
+class _OverflowMenuButton extends StatefulWidget {
+  final WidgetTheme theme;
+  final WidgetSettings? settings;
+  final OverlayState? overlayState;
+
+  const _OverflowMenuButton({
+    required this.theme,
+    required this.settings,
+    this.overlayState,
+  });
+
+  @override
+  State<_OverflowMenuButton> createState() => _OverflowMenuButtonState();
+}
+
+class _OverflowMenuButtonState extends State<_OverflowMenuButton> {
+  bool _isMenuOpen = false;
+  OverlayEntry? _menuOverlayEntry;
+
+  /// Show the overflow menu with available options
+  Future<void> _showOverflowMenuWithAnchor(BuildContext anchorContext) async {
+    // If overlayState is provided, use manual OverlayEntry for proper z-ordering
+    if (widget.overlayState != null) {
+      return _showCustomOverlayMenu(anchorContext);
+    }
+
+    // Otherwise fall back to standard showMenu
+    // Prevent opening multiple menus
+    if (_isMenuOpen) return;
+    if (widget.settings == null) return;
+
+    setState(() {
+      _isMenuOpen = true;
+    });
+
+    try {
+      final List<PopupMenuEntry<String>> menuItems = [];
+
+      // Add Give Feedback option
+      if (widget.settings!.giveFeedbackUrl?.isNotEmpty == true) {
+        menuItems.add(
+          PopupMenuItem<String>(
+            value: 'give_feedback',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.thumb_up,
+                  color: widget.theme.textColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Give Feedback',
+                  style: TextStyle(color: widget.theme.textColor),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // Add View History option
+      if (widget.settings!.viewHistoryUrl?.isNotEmpty == true) {
+        menuItems.add(
+          PopupMenuItem<String>(
+            value: 'view_history',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.history,
+                  color: widget.theme.textColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'View History',
+                  style: TextStyle(color: widget.theme.textColor),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // Add Report Issue option
+      if (widget.settings!.reportIssueUrl?.isNotEmpty == true) {
+        menuItems.add(
+          PopupMenuItem<String>(
+            value: 'report_issue',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.warning,
+                  color: widget.theme.textColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Report Issue',
+                  style: TextStyle(color: widget.theme.textColor),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      if (menuItems.isEmpty) {
+        setState(() {
+          _isMenuOpen = false;
+        });
+        return;
+      }
+
+      // Get the render box for positioning relative to the button
+      final RenderBox renderBox = anchorContext.findRenderObject() as RenderBox;
+      final Offset offset = renderBox.localToGlobal(Offset.zero);
+
+      // Use root navigator context to show menu above everything (including overlays)
+      if (!mounted) return;
+
+      // Get the root navigator context
+      final BuildContext rootContext = Navigator.of(anchorContext, rootNavigator: true).context;
+
+      final String? value = await showMenu<String>(
+        context: rootContext,
+        position: RelativeRect.fromLTRB(
+          offset.dx,
+          offset.dy + renderBox.size.height, // Position below the button
+          offset.dx + renderBox.size.width,
+          offset.dy + renderBox.size.height,
+        ),
+        color: widget.theme.backgroundColor,
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: widget.theme.borderColor),
+        ),
+        items: menuItems,
+      );
+
+      if (value != null) {
+        _handleMenuAction(value);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMenuOpen = false;
+        });
+      }
+    }
+  }
+
+  /// Show menu using manual OverlayEntry for proper z-ordering
+  void _showCustomOverlayMenu(BuildContext anchorContext) {
+    // Prevent opening multiple menus
+    if (_isMenuOpen) return;
+    if (widget.settings == null) return;
+    if (widget.overlayState == null) return;
+
+    setState(() {
+      _isMenuOpen = true;
+    });
+
+    // Get the render box for positioning
+    final RenderBox renderBox = anchorContext.findRenderObject() as RenderBox;
+    final Offset offset = renderBox.localToGlobal(Offset.zero);
+    final Size size = renderBox.size;
+
+    // Build menu items
+    final List<Widget> menuItems = [];
+
+    if (widget.settings!.giveFeedbackUrl?.isNotEmpty == true) {
+      menuItems.add(
+        _buildMenuItem(
+          icon: Icons.thumb_up,
+          label: 'Give Feedback',
+          onTap: () {
+            _closeCustomMenu();
+            _handleMenuAction('give_feedback');
+          },
+        ),
+      );
+    }
+
+    if (widget.settings!.viewHistoryUrl?.isNotEmpty == true) {
+      menuItems.add(
+        _buildMenuItem(
+          icon: Icons.history,
+          label: 'View History',
+          onTap: () {
+            _closeCustomMenu();
+            _handleMenuAction('view_history');
+          },
+        ),
+      );
+    }
+
+    if (widget.settings!.reportIssueUrl?.isNotEmpty == true) {
+      menuItems.add(
+        _buildMenuItem(
+          icon: Icons.warning,
+          label: 'Report Issue',
+          onTap: () {
+            _closeCustomMenu();
+            _handleMenuAction('report_issue');
+          },
+        ),
+      );
+    }
+
+    if (menuItems.isEmpty) {
+      setState(() {
+        _isMenuOpen = false;
+      });
+      return;
+    }
+
+    // Create the overlay entry
+    _menuOverlayEntry = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          // Invisible barrier to close menu when tapping outside
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _closeCustomMenu,
+              behavior: HitTestBehavior.translucent,
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+          // The actual menu
+          Positioned(
+            left: offset.dx,
+            top: offset.dy + size.height + 8,
+            child: Material(
+              color: widget.theme.backgroundColor,
+              elevation: 8,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: widget.theme.borderColor),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IntrinsicWidth(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: menuItems,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Insert the overlay entry at the top level
+    widget.overlayState!.insert(_menuOverlayEntry!);
+  }
+
+  /// Build a menu item widget
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: widget.theme.textColor,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(color: widget.theme.textColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Close the custom overlay menu
+  void _closeCustomMenu() {
+    _menuOverlayEntry?.remove();
+    _menuOverlayEntry = null;
+    if (mounted) {
+      setState(() {
+        _isMenuOpen = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    // Don't call setState during dispose
+    _menuOverlayEntry?.remove();
+    _menuOverlayEntry = null;
+    _isMenuOpen = false;
+    super.dispose();
+  }
+
+  /// Handle menu action selection
+  void _handleMenuAction(String action) {
+    String? url;
+
+    switch (action) {
+      case 'give_feedback':
+        url = widget.settings?.giveFeedbackUrl;
+        break;
+      case 'view_history':
+        url = widget.settings?.viewHistoryUrl;
+        break;
+      case 'report_issue':
+        url = widget.settings?.reportIssueUrl;
+        break;
+    }
+
+    if (url?.isNotEmpty == true) {
+      _launchUrl(url!);
+    }
+  }
+
+  /// Launch URL in external browser
+  Future<void> _launchUrl(String url) async {
+    try {
+      final Uri uri = Uri.parse(url);
+
+      // Try to launch with external application mode first
+      bool launched = false;
+
+      try {
+        launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (e) {
+        debugPrint('Failed to launch with external application mode: $e');
+      }
+
+      // If that fails, try with platform default mode
+      if (!launched) {
+        try {
+          launched = await launchUrl(
+            uri,
+            mode: LaunchMode.platformDefault,
+          );
+        } catch (e) {
+          debugPrint('Failed to launch with platform default mode: $e');
+        }
+      }
+
+      if (!launched) {
+        debugPrint('Could not launch URL: $url');
+      }
+    } catch (e) {
+      debugPrint('Error launching URL: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Use Builder to get the proper anchor context
+    return Builder(
+      builder: (BuildContext anchorContext) {
+        return _CompactControlButton(
+          onPressed: () => _showOverflowMenuWithAnchor(anchorContext),
+          icon: Icons.more_vert,
+          backgroundColor: widget.theme.buttonColor,
+          iconColor: widget.theme.textColor,
+          theme: widget.theme,
+        );
+      },
     );
   }
 }

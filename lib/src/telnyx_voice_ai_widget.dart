@@ -201,6 +201,9 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
         if (_widgetService.isConversationVisible &&
             _widgetService.widgetState != AssistantWidgetState.conversation) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            // Capture the overlay state before creating the overlay entry
+            final overlayState = Overlay.of(context);
+
             _widgetService.createConversationOverlay(context, () {
               return ConversationOverlay(
                 transcript: _widgetService.transcript,
@@ -215,6 +218,7 @@ class _TelnyxVoiceAiWidgetState extends State<TelnyxVoiceAiWidget> {
                 audioLevels: _widgetService.inboundAudioLevels,
                 onToggleMute: _widgetService.toggleMute,
                 onEndCall: _widgetService.endCall,
+                overlayState: overlayState,
               );
             });
           });

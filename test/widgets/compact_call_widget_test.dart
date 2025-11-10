@@ -10,7 +10,7 @@ void main() {
     late WidgetTheme theme;
 
     setUp(() {
-      theme = WidgetTheme.light();
+      theme = WidgetTheme.light;
     });
 
     testWidgets('should show overflow menu when URLs are provided', (WidgetTester tester) async {
@@ -131,7 +131,8 @@ void main() {
 
       // Tap the overflow menu button
       await tester.tap(find.byIcon(Icons.more_vert));
-      await tester.pumpAndSettle();
+      await tester.pump(); // Build the menu
+      await tester.pump(const Duration(milliseconds: 300)); // Wait for animation
 
       // Check that all menu items are present
       expect(find.text('Give Feedback'), findsOneWidget);
@@ -173,7 +174,8 @@ void main() {
 
       // Tap the overflow menu button
       await tester.tap(find.byIcon(Icons.more_vert));
-      await tester.pumpAndSettle();
+      await tester.pump(); // Build the menu
+      await tester.pump(const Duration(milliseconds: 300)); // Wait for animation
 
       // Check that only available menu items are present
       expect(find.text('Give Feedback'), findsNothing);

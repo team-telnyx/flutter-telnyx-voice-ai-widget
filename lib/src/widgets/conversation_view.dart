@@ -26,6 +26,7 @@ class ConversationView extends StatefulWidget {
   final List<double> audioLevels;
   final VoidCallback onToggleMute;
   final VoidCallback onEndCall;
+  final OverlayState? overlayState;
 
   const ConversationView({
     super.key,
@@ -42,6 +43,7 @@ class ConversationView extends StatefulWidget {
     required this.audioLevels,
     required this.onToggleMute,
     required this.onEndCall,
+    this.overlayState,
   });
 
   @override
@@ -196,6 +198,7 @@ class _ConversationViewState extends State<ConversationView> {
               isExpanded: true,
               // New parameter to indicate expanded mode
               backgroundColor: topSectionColor,
+              overlayState: widget.overlayState,
             ),
           ),
         ),
