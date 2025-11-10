@@ -54,8 +54,8 @@ class _ConversationViewState extends State<ConversationView> with WidgetsBinding
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
-  File? _selectedImage;
-  String? _selectedImageBase64;
+  final List<File> _selectedImages = [];
+  final List<String> _selectedImagesBase64 = [];
 
   @override
   void initState() {
@@ -87,8 +87,8 @@ class _ConversationViewState extends State<ConversationView> with WidgetsBinding
 
       if (mounted) {
         setState(() {
-          _selectedImage = imageFile;
-          _selectedImageBase64 = base64String;
+          _selectedImages.add(imageFile);
+          _selectedImagesBase64.add(base64String);
         });
       }
     } catch (e) {
@@ -160,8 +160,8 @@ class _ConversationViewState extends State<ConversationView> with WidgetsBinding
 
         if (mounted) {
           setState(() {
-            _selectedImage = imageFile;
-            _selectedImageBase64 = base64String;
+            _selectedImages.add(imageFile);
+            _selectedImagesBase64.add(base64String);
           });
         }
       }
@@ -188,20 +188,26 @@ class _ConversationViewState extends State<ConversationView> with WidgetsBinding
     }
   }
 
-  void _removeImage() {
+  void _removeImage(int index) {
     setState(() {
-      _selectedImage = null;
-      _selectedImageBase64 = null;
+      _selectedImages.removeAt(index);
+      _selectedImagesBase64.removeAt(index);
     });
   }
 
   void _sendMessage() {
     final message = _messageController.text.trim();
-    if (message.isNotEmpty || _selectedImageBase64 != null) {
+    if (message.isNotEmpty || _selectedImagesBase64.isNotEmpty) {
       final messageText = message.isNotEmpty ? message : 'Image attached';
-      widget.onSendMessage(messageText, base64Image: _selectedImageBase64);
+      // TODO: API currently only supports single base64 image
+      // Once API supports multiple images, send all _selectedImagesBase64
+      final base64Image = _selectedImagesBase64.isNotEmpty ? _selectedImagesBase64.first : null;
+      widget.onSendMessage(messageText, base64Image: base64Image);
       _messageController.clear();
-      _removeImage();
+      setState(() {
+        _selectedImages.clear();
+        _selectedImagesBase64.clear();
+      });
     }
   }
 
@@ -394,47 +400,56 @@ class _ConversationViewState extends State<ConversationView> with WidgetsBinding
                           padding: const EdgeInsets.all(16),
                           child: Column(
                             children: [
-                            // Image preview
-                            if (_selectedImage != null) ...[
+                            // Image preview staging area
+                            if (_selectedImages.isNotEmpty) ...[
                               Container(
                                 margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: textBoxColor,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: widget.theme.borderColor),
-                                ),
-                                child: Row(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(4),
-                                      child: Image.file(
-                                        _selectedImage!,
-                                        width: 60,
-                                        height: 60,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        'Image selected',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: widget.theme.textColor,
+                                height: 88,
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: List.generate(
+                                      _selectedImages.length,
+                                      (index) => Padding(
+                                        padding: EdgeInsets.only(
+                                          right: index < _selectedImages.length - 1 ? 8.0 : 0,
+                                        ),
+                                        child: Stack(
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Image.file(
+                                                _selectedImages[index],
+                                                width: 80,
+                                                height: 80,
+                                                fit: BoxFit.cover,
+                                              ),
+                                            ),
+                                            Positioned(
+                                              top: 4,
+                                              right: 4,
+                                              child: GestureDetector(
+                                                onTap: () => _removeImage(index),
+                                                child: Container(
+                                                  width: 24,
+                                                  height: 24,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.red,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.close,
+                                                    color: Colors.white,
+                                                    size: 16,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ),
-                                    IconButton(
-                                      onPressed: _removeImage,
-                                      icon: const Icon(Icons.close, size: 20),
-                                      style: IconButton.styleFrom(
-                                        backgroundColor: Colors.red.withValues(alpha: 0.1),
-                                        foregroundColor: Colors.red,
-                                        minimumSize: const Size(32, 32),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ],
