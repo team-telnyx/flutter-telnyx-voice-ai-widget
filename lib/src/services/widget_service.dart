@@ -171,6 +171,9 @@ class WidgetService extends ChangeNotifier {
       _transcript.clear();
       _telnyxClient.clearTranscript();
 
+      // Reset mute state
+      _isMuted = false;
+
       // Clear audio levels and metrics
       _inboundAudioLevels.clear();
       _processedAudioLevels.clear();
@@ -240,6 +243,9 @@ class WidgetService extends ChangeNotifier {
           // clear transcript and audio levels when call ends
           _transcript.clear();
           _inboundAudioLevels.clear();
+
+          // Reset mute state
+          _isMuted = false;
 
           _updateWidgetState(AssistantWidgetState.collapsed);
           _updateAgentStatus(AgentStatus.idle);
