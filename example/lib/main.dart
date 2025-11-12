@@ -61,33 +61,21 @@ class _MyHomePageState extends State<MyHomePage> {
   }
   
   Future<void> _requestPermissions() async {
-    // Request microphone permission
-    Map<Permission, PermissionStatus> statuses = await [
-      Permission.microphone,
-      Permission.camera,
-      Permission.photos,
-    ].request();
-    
+    // Request microphone permission at launch (required for voice calls)
+    final micStatus = await Permission.microphone.request();
+
     // Request bluetooth permissions for Android 12+
     if (await Permission.bluetoothConnect.isGranted == false) {
       await Permission.bluetoothConnect.request();
     }
-    
-    if (statuses[Permission.microphone]!.isDenied ||
-        statuses[Permission.microphone]!.isPermanentlyDenied) {
+
+    // Only show snackbar if microphone permission was denied
+    if (micStatus.isDenied || micStatus.isPermanentlyDenied) {
       _showPermissionSnackbar('Microphone permission is required for voice calls');
     }
-    
-    if (statuses[Permission.camera]!.isDenied ||
-        statuses[Permission.camera]!.isPermanentlyDenied) {
-      _showPermissionSnackbar('Camera permission is required for sending photos');
-    }
-    
-    if (statuses[Permission.photos]!.isDenied ||
-        statuses[Permission.photos]!.isPermanentlyDenied) {
-      _showPermissionSnackbar(
-          'Photo library permission is required for sending photos');
-    }
+
+    // Note: Camera and photo library permissions are requested on-demand
+    // when the user attempts to use those features, not at launch
   }
 
   void _showPermissionSnackbar(String message) {
