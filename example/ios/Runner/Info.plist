@@ -51,5 +51,9 @@
 	<string>This app needs bluetooth access to connect to wireless audio devices during calls.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>This app needs bluetooth access to connect to wireless audio devices during calls.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs camera access to allow you to take and send photos to the AI assistant.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app needs photo library access to allow you to select and send photos to the AI assistant.</string>
 </dict>
 </plist>
