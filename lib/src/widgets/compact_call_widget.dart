@@ -283,6 +283,9 @@ class CompactCallWidget extends StatelessWidget {
       return settings?.speakToInterruptText?.isNotEmpty == true
           ? settings!.speakToInterruptText!
           : 'Speak to interrupt'; // Default fallback
+    } else if (agentStatus == AgentStatus.processingImage) {
+      // Agent is processing an image - show processing text (not overridable)
+      return 'Processing image...';
     }
     // Idle state - no text
     return 'Speak to interrupt';

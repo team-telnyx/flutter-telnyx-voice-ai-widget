@@ -48,6 +48,7 @@ class _ConversationOverlayState extends State<ConversationOverlay>
   late AnimationController _animationController;
   late Animation<double> _slideAnimation;
   late Animation<double> _fadeAnimation;
+  bool _isPickingImage = false;
 
   @override
   void initState() {
@@ -84,13 +85,24 @@ class _ConversationOverlayState extends State<ConversationOverlay>
     super.dispose();
   }
 
+  void _handleImagePickingStateChanged(bool isPickingImage) {
+    setState(() {
+      _isPickingImage = isPickingImage;
+    });
+  }
+
   Future<void> _close() async {
+    // Don't allow closing while picking an image
+    if (_isPickingImage) {
+      return;
+    }
+
     // Add haptic feedback
     HapticFeedback.lightImpact();
-    
+
     // Animate out
     await _animationController.reverse();
-    
+
     // Call the close callback
     widget.onClose();
   }
@@ -115,7 +127,11 @@ class _ConversationOverlayState extends State<ConversationOverlay>
               ),
 
               // Main conversation content with slide animation
-              Positioned.fill(
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: MediaQuery.of(context).viewInsets.bottom,
                 child: Transform.translate(
                   offset: Offset(0, MediaQuery.of(context).size.height * _slideAnimation.value),
                   child: Container(
@@ -153,6 +169,7 @@ class _ConversationOverlayState extends State<ConversationOverlay>
                               onToggleMute: widget.onToggleMute,
                               onEndCall: widget.onEndCall,
                               overlayState: widget.overlayState,
+                              onImagePickingStateChanged: _handleImagePickingStateChanged,
                             ),
                           ),
                         ],

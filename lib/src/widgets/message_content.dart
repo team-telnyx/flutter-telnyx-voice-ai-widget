@@ -8,12 +8,16 @@ class MessageContent extends StatelessWidget {
   final TranscriptItem item;
   final bool isUser;
   final WidgetTheme theme;
+  final Color? textColor;
+  final bool showImages;
 
   const MessageContent({
     super.key,
     required this.item,
     required this.isUser,
     required this.theme,
+    this.textColor,
+    this.showImages = true,
   });
 
   @override
@@ -26,15 +30,17 @@ class MessageContent extends StatelessWidget {
           Text(
             item.content,
             style: TextStyle(
+              // Use provided textColor if available, otherwise fall back to default logic
               // Slightly reduce opacity for partial messages to indicate they're still being received
-              color: (isUser ? Colors.white : theme.textColor).withValues(alpha: item.isPartial == true ? 0.8 : 1.0),
+              color: (textColor ?? (isUser ? Colors.white : theme.textColor))
+                  .withValues(alpha: item.isPartial == true ? 0.8 : 1.0),
               fontSize: 14,
             ),
           ),
-          if (item.hasImages()) const SizedBox(height: 8),
+          if (showImages && item.hasImages()) const SizedBox(height: 8),
         ],
         // Display images if available
-        if (item.hasImages()) ...[
+        if (showImages && item.hasImages()) ...[
           Wrap(
             spacing: 8,
             runSpacing: 8,

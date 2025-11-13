@@ -61,26 +61,34 @@ class _MyHomePageState extends State<MyHomePage> {
   }
   
   Future<void> _requestPermissions() async {
-    // Request microphone permission
-    final microphoneStatus = await Permission.microphone.request();
-    
+    // Request microphone permission at launch (required for voice calls)
+    final micStatus = await Permission.microphone.request();
+
     // Request bluetooth permissions for Android 12+
     if (await Permission.bluetoothConnect.isGranted == false) {
       await Permission.bluetoothConnect.request();
     }
-    
-    if (microphoneStatus.isDenied || microphoneStatus.isPermanentlyDenied) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Microphone permission is required for voice calls'),
-            action: SnackBarAction(
-              label: 'Settings',
-              onPressed: () => openAppSettings(),
-            ),
+
+    // Only show snackbar if microphone permission was denied
+    if (micStatus.isDenied || micStatus.isPermanentlyDenied) {
+      _showPermissionSnackbar('Microphone permission is required for voice calls');
+    }
+
+    // Note: Camera and photo library permissions are requested on-demand
+    // when the user attempts to use those features, not at launch
+  }
+
+  void _showPermissionSnackbar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: SnackBarAction(
+            label: 'Settings',
+            onPressed: () => openAppSettings(),
           ),
-        );
-      }
+        ),
+      );
     }
   }
 
