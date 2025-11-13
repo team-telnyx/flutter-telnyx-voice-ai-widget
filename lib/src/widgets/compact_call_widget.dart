@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:telnyx_webrtc/telnyx_webrtc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/widget_theme.dart';
 import '../models/agent_status.dart';
 import 'audio_visualizer.dart';
@@ -16,6 +17,7 @@ class CompactCallWidget extends StatelessWidget {
   final VoidCallback onEndCall;
   final bool isExpanded;
   final Color? backgroundColor;
+  final OverlayState? overlayState;
 
   const CompactCallWidget({
     super.key,
@@ -30,6 +32,7 @@ class CompactCallWidget extends StatelessWidget {
     required this.onEndCall,
     this.isExpanded = false,
     this.backgroundColor,
+    this.overlayState,
   });
 
   @override
@@ -45,11 +48,19 @@ class CompactCallWidget extends StatelessWidget {
         ),
         child: Column(
           children: [
-            // Close button at the top
+            // Close button and overflow menu at the top
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
+                  // Overflow menu (only show if URLs are available)
+                  if (_hasMenuUrls(settings))
+                    _OverflowMenuButton(
+                      theme: theme,
+                      settings: settings,
+                      overlayState: overlayState,
+                      onEndCall: onEndCall,
+                    ),
                   const Spacer(),
                   _CompactControlButton(
                     onPressed: onClose,
@@ -279,6 +290,14 @@ class CompactCallWidget extends StatelessWidget {
     // Idle state - no text
     return 'Speak to interrupt';
   }
+
+  /// Check if any menu URLs are available
+  bool _hasMenuUrls(WidgetSettings? settings) {
+    if (settings == null) return false;
+    return (settings.giveFeedbackUrl?.isNotEmpty == true) ||
+           (settings.reportIssueUrl?.isNotEmpty == true) ||
+           (settings.viewHistoryUrl?.isNotEmpty == true);
+  }
 }
 
 // Compact version of the control button
@@ -363,6 +382,605 @@ class _ExpandedControlButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// Overflow menu button with state management to prevent multiple menus
+class _OverflowMenuButton extends StatefulWidget {
+  final WidgetTheme theme;
+  final WidgetSettings? settings;
+  final OverlayState? overlayState;
+  final VoidCallback onEndCall;
+
+  const _OverflowMenuButton({
+    required this.theme,
+    required this.settings,
+    this.overlayState,
+    required this.onEndCall,
+  });
+
+  @override
+  State<_OverflowMenuButton> createState() => _OverflowMenuButtonState();
+}
+
+class _OverflowMenuButtonState extends State<_OverflowMenuButton> {
+  bool _isMenuOpen = false;
+  OverlayEntry? _menuOverlayEntry;
+  OverlayEntry? _dialogOverlayEntry;
+
+  /// Show the overflow menu with available options
+  Future<void> _showOverflowMenuWithAnchor(BuildContext anchorContext) async {
+    // If overlayState is provided, use manual OverlayEntry for proper z-ordering
+    if (widget.overlayState != null) {
+      return _showCustomOverlayMenu(anchorContext);
+    }
+
+    // Otherwise fall back to standard showMenu
+    // Prevent opening multiple menus
+    if (_isMenuOpen) return;
+    if (widget.settings == null) return;
+
+    setState(() {
+      _isMenuOpen = true;
+    });
+
+    try {
+      final List<PopupMenuEntry<String>> menuItems = [];
+
+      // Add Give Feedback option
+      if (widget.settings!.giveFeedbackUrl?.isNotEmpty == true) {
+        menuItems.add(
+          PopupMenuItem<String>(
+            value: 'give_feedback',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.thumb_up,
+                  color: widget.theme.textColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Give Feedback',
+                  style: TextStyle(color: widget.theme.textColor),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // Add View History option
+      if (widget.settings!.viewHistoryUrl?.isNotEmpty == true) {
+        menuItems.add(
+          PopupMenuItem<String>(
+            value: 'view_history',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.history,
+                  color: widget.theme.textColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'View History',
+                  style: TextStyle(color: widget.theme.textColor),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // Add Report Issue option
+      if (widget.settings!.reportIssueUrl?.isNotEmpty == true) {
+        menuItems.add(
+          PopupMenuItem<String>(
+            value: 'report_issue',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.warning,
+                  color: widget.theme.textColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Report Issue',
+                  style: TextStyle(color: widget.theme.textColor),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      if (menuItems.isEmpty) {
+        setState(() {
+          _isMenuOpen = false;
+        });
+        return;
+      }
+
+      // Get the render box for positioning relative to the button
+      final RenderBox renderBox = anchorContext.findRenderObject() as RenderBox;
+      final Offset offset = renderBox.localToGlobal(Offset.zero);
+
+      // Use root navigator context to show menu above everything (including overlays)
+      if (!mounted) return;
+
+      // Get the root navigator context
+      final BuildContext rootContext = Navigator.of(anchorContext, rootNavigator: true).context;
+
+      final String? value = await showMenu<String>(
+        context: rootContext,
+        position: RelativeRect.fromLTRB(
+          offset.dx,
+          offset.dy + renderBox.size.height, // Position below the button
+          offset.dx + renderBox.size.width,
+          offset.dy + renderBox.size.height,
+        ),
+        color: widget.theme.backgroundColor,
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: widget.theme.borderColor),
+        ),
+        items: menuItems,
+      );
+
+      if (value != null && mounted) {
+        // Get the action label for the dialog
+        String actionLabel;
+        switch (value) {
+          case 'give_feedback':
+            actionLabel = 'Give Feedback';
+            break;
+          case 'view_history':
+            actionLabel = 'View Conversation History';
+            break;
+          case 'report_issue':
+            actionLabel = 'Report Issue';
+            break;
+          default:
+            actionLabel = value;
+        }
+        // ignore: use_build_context_synchronously
+        _showConfirmationDialog(anchorContext, actionLabel, value);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMenuOpen = false;
+        });
+      }
+    }
+  }
+
+  /// Show menu using manual OverlayEntry for proper z-ordering
+  void _showCustomOverlayMenu(BuildContext anchorContext) {
+    // Prevent opening multiple menus
+    if (_isMenuOpen) return;
+    if (widget.settings == null) return;
+    if (widget.overlayState == null) return;
+
+    setState(() {
+      _isMenuOpen = true;
+    });
+
+    // Get the render box for positioning
+    final RenderBox renderBox = anchorContext.findRenderObject() as RenderBox;
+    final Offset offset = renderBox.localToGlobal(Offset.zero);
+    final Size size = renderBox.size;
+
+    // Build menu items
+    final List<Widget> menuItems = [];
+
+    if (widget.settings!.giveFeedbackUrl?.isNotEmpty == true) {
+      menuItems.add(
+        _buildMenuItem(
+          icon: Icons.thumb_up,
+          label: 'Give Feedback',
+          onTap: () {
+            _closeCustomMenu();
+            _showConfirmationDialog(anchorContext, 'Give Feedback', 'give_feedback');
+          },
+        ),
+      );
+    }
+
+    if (widget.settings!.viewHistoryUrl?.isNotEmpty == true) {
+      menuItems.add(
+        _buildMenuItem(
+          icon: Icons.history,
+          label: 'View History',
+          onTap: () {
+            _closeCustomMenu();
+            _showConfirmationDialog(anchorContext, 'View Conversation History', 'view_history');
+          },
+        ),
+      );
+    }
+
+    if (widget.settings!.reportIssueUrl?.isNotEmpty == true) {
+      menuItems.add(
+        _buildMenuItem(
+          icon: Icons.warning,
+          label: 'Report Issue',
+          onTap: () {
+            _closeCustomMenu();
+            _showConfirmationDialog(anchorContext, 'Report Issue', 'report_issue');
+          },
+        ),
+      );
+    }
+
+    if (menuItems.isEmpty) {
+      setState(() {
+        _isMenuOpen = false;
+      });
+      return;
+    }
+
+    // Create the overlay entry
+    _menuOverlayEntry = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          // Invisible barrier to close menu when tapping outside
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _closeCustomMenu,
+              behavior: HitTestBehavior.translucent,
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+          // The actual menu
+          Positioned(
+            left: offset.dx,
+            top: offset.dy + size.height + 8,
+            child: Material(
+              color: widget.theme.backgroundColor,
+              elevation: 8,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: widget.theme.borderColor),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IntrinsicWidth(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: menuItems,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // Insert the overlay entry at the top level
+    widget.overlayState!.insert(_menuOverlayEntry!);
+  }
+
+  /// Build a menu item widget
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: widget.theme.textColor,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(color: widget.theme.textColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Close the custom overlay menu
+  void _closeCustomMenu() {
+    _menuOverlayEntry?.remove();
+    _menuOverlayEntry = null;
+    if (mounted) {
+      setState(() {
+        _isMenuOpen = false;
+      });
+    }
+  }
+
+  /// Show confirmation dialog before ending call and opening URL
+  Future<void> _showConfirmationDialog(
+    BuildContext context,
+    String actionLabel,
+    String action,
+  ) async {
+    // If overlayState is provided, use custom overlay for proper z-ordering
+    if (widget.overlayState != null) {
+      _showCustomConfirmationDialog(actionLabel.toLowerCase(), action);
+      return;
+    }
+
+    // Fallback to standard dialog
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: widget.theme.backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: widget.theme.borderColor),
+          ),
+          title: Text(
+            'End call and ${actionLabel.toLowerCase()}',
+            style: TextStyle(
+              color: widget.theme.textColor,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Text(
+            'This will end your current call. Do you want to continue?',
+            style: TextStyle(
+              color: widget.theme.secondaryTextColor,
+              fontSize: 14,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(
+                'Close',
+                style: TextStyle(
+                  color: widget.theme.secondaryTextColor,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: widget.theme.buttonColor,
+                foregroundColor: widget.theme.textColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+              ),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If confirmed, end the call first, then open the URL
+    if (confirmed == true) {
+      // End the call
+      widget.onEndCall();
+
+      // Wait a moment for the call to end
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Then handle the menu action (open URL)
+      _handleMenuAction(action);
+    }
+  }
+
+  /// Show custom confirmation dialog using OverlayEntry for proper z-ordering
+  void _showCustomConfirmationDialog(String actionLabel, String action) {
+    if (widget.overlayState == null) return;
+
+    // Create the overlay entry
+    _dialogOverlayEntry = OverlayEntry(
+      builder: (context) => Material(
+        color: Colors.black.withValues(alpha: 0.5),
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 32),
+            constraints: const BoxConstraints(maxWidth: 400),
+            decoration: BoxDecoration(
+              color: widget.theme.backgroundColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: widget.theme.borderColor),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Title
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  child: Text(
+                    'End call and $actionLabel',
+                    style: TextStyle(
+                      color: widget.theme.textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                // Content
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: Text(
+                    'This will end your current call. Do you want to continue?',
+                    style: TextStyle(
+                      color: widget.theme.secondaryTextColor,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                // Actions
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: _closeCustomDialog,
+                        child: Text(
+                          'Close',
+                          style: TextStyle(
+                            color: widget.theme.secondaryTextColor,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () => _handleDialogConfirmation(action),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: widget.theme.buttonColor,
+                          foregroundColor: widget.theme.textColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                        ),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Insert the overlay entry at the top level
+    widget.overlayState!.insert(_dialogOverlayEntry!);
+  }
+
+  /// Handle dialog confirmation
+  Future<void> _handleDialogConfirmation(String action) async {
+    // Close the dialog first
+    _closeCustomDialog();
+
+    // End the call
+    widget.onEndCall();
+
+    // Wait a moment for the call to end
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Then handle the menu action (open URL)
+    _handleMenuAction(action);
+  }
+
+  /// Close the custom dialog
+  void _closeCustomDialog() {
+    _dialogOverlayEntry?.remove();
+    _dialogOverlayEntry = null;
+  }
+
+  @override
+  void dispose() {
+    // Don't call setState during dispose
+    _menuOverlayEntry?.remove();
+    _menuOverlayEntry = null;
+    _dialogOverlayEntry?.remove();
+    _dialogOverlayEntry = null;
+    _isMenuOpen = false;
+    super.dispose();
+  }
+
+  /// Handle menu action selection
+  void _handleMenuAction(String action) {
+    String? url;
+
+    switch (action) {
+      case 'give_feedback':
+        url = widget.settings?.giveFeedbackUrl;
+        break;
+      case 'view_history':
+        url = widget.settings?.viewHistoryUrl;
+        break;
+      case 'report_issue':
+        url = widget.settings?.reportIssueUrl;
+        break;
+    }
+
+    if (url?.isNotEmpty == true) {
+      _launchUrl(url!);
+    }
+  }
+
+  /// Launch URL in external browser
+  Future<void> _launchUrl(String url) async {
+    try {
+      final Uri uri = Uri.parse(url);
+
+      // Try to launch with external application mode first
+      bool launched = false;
+
+      try {
+        launched = await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (e) {
+        debugPrint('Failed to launch with external application mode: $e');
+      }
+
+      // If that fails, try with platform default mode
+      if (!launched) {
+        try {
+          launched = await launchUrl(
+            uri,
+            mode: LaunchMode.platformDefault,
+          );
+        } catch (e) {
+          debugPrint('Failed to launch with platform default mode: $e');
+        }
+      }
+
+      if (!launched) {
+        debugPrint('Could not launch URL: $url');
+      }
+    } catch (e) {
+      debugPrint('Error launching URL: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Use Builder to get the proper anchor context
+    return Builder(
+      builder: (BuildContext anchorContext) {
+        return _CompactControlButton(
+          onPressed: () => _showOverflowMenuWithAnchor(anchorContext),
+          icon: Icons.more_vert,
+          backgroundColor: widget.theme.buttonColor,
+          iconColor: widget.theme.textColor,
+          theme: widget.theme,
+        );
+      },
     );
   }
 }

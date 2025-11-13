@@ -20,6 +20,7 @@ class ConversationOverlay extends StatefulWidget {
   final List<double> audioLevels;
   final VoidCallback onToggleMute;
   final VoidCallback onEndCall;
+  final OverlayState? overlayState;
 
   const ConversationOverlay({
     super.key,
@@ -35,6 +36,7 @@ class ConversationOverlay extends StatefulWidget {
     required this.audioLevels,
     required this.onToggleMute,
     required this.onEndCall,
+    this.overlayState,
   });
 
   @override
@@ -123,7 +125,7 @@ class _ConversationOverlayState extends State<ConversationOverlay>
                   ),
                 ),
               ),
-              
+
               // Main conversation content with slide animation
               Positioned(
                 left: 0,
@@ -166,6 +168,7 @@ class _ConversationOverlayState extends State<ConversationOverlay>
                               audioLevels: widget.audioLevels,
                               onToggleMute: widget.onToggleMute,
                               onEndCall: widget.onEndCall,
+                              overlayState: widget.overlayState,
                               onImagePickingStateChanged: _handleImagePickingStateChanged,
                             ),
                           ),

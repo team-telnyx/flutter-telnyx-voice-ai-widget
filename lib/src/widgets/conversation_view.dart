@@ -26,6 +26,7 @@ class ConversationView extends StatefulWidget {
   final List<double> audioLevels;
   final VoidCallback onToggleMute;
   final VoidCallback onEndCall;
+  final OverlayState? overlayState;
   final Function(bool isPickingImage)? onImagePickingStateChanged;
 
   const ConversationView({
@@ -43,6 +44,7 @@ class ConversationView extends StatefulWidget {
     required this.audioLevels,
     required this.onToggleMute,
     required this.onEndCall,
+    this.overlayState,
     this.onImagePickingStateChanged,
   });
 
@@ -289,6 +291,7 @@ class _ConversationViewState extends State<ConversationView> with WidgetsBinding
               isExpanded: true,
               // New parameter to indicate expanded mode
               backgroundColor: topSectionColor,
+              overlayState: widget.overlayState,
             ),
           ),
         ),
