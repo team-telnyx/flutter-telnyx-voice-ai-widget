@@ -16,7 +16,7 @@ class ConversationView extends StatefulWidget {
   final List<TranscriptItem> transcript;
   final WidgetTheme theme;
   final VoidCallback onClose;
-  final Function(String message, {String? base64Image}) onSendMessage;
+  final Function(String message, {List<String>? base64Images}) onSendMessage;
   final bool isFullScreen;
   final String? avatarUrl;
   final WidgetSettings? settings;
@@ -201,10 +201,8 @@ class _ConversationViewState extends State<ConversationView> with WidgetsBinding
     final message = _messageController.text.trim();
     if (message.isNotEmpty || _selectedImagesBase64.isNotEmpty) {
       final messageText = message.isNotEmpty ? message : 'Image attached';
-      // TODO: API currently only supports single base64 image
-      // Once API supports multiple images, send all _selectedImagesBase64
-      final base64Image = _selectedImagesBase64.isNotEmpty ? _selectedImagesBase64.first : null;
-      widget.onSendMessage(messageText, base64Image: base64Image);
+      final base64Images = _selectedImagesBase64.isNotEmpty ? _selectedImagesBase64 : null;
+      widget.onSendMessage(messageText, base64Images: base64Images);
       _messageController.clear();
       setState(() {
         _selectedImages.clear();
