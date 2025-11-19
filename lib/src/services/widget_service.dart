@@ -205,10 +205,10 @@ class WidgetService extends ChangeNotifier {
     }
   }
 
-  /// Send a text message with optional image
-  Future<void> sendMessage(String message, {String? base64Image}) async {
+  /// Send a text message with optional images
+  Future<void> sendMessage(String message, {List<String>? base64Images}) async {
     try {
-      currentCall?.sendConversationMessage(message, base64Image: base64Image);
+      currentCall?.sendConversationMessage(message, base64Images: base64Images);
     } catch (e) {
       debugPrint('Error sending message: $e');
     }
