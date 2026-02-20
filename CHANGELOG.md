@@ -1,3 +1,8 @@
+## [1.2.0](https://github.com/team-telnyx/flutter-telnyx-voice-ai-widget/releases/tag/1.2.0) (2026-02-20)
+
+### Enhancement
+- Bump telnyx_webrtc dependency from ^3.2.0 to ^4.0.0 to sync with Flutter Voice SDK v4, incorporating missed call notification support on iOS and answered device token improvements.
+
 ## [1.1.0](https://github.com/team-telnyx/flutter-voice-commons/releases/tag/1.0.0) (2025-11-19)
 
 ### Enhancement
