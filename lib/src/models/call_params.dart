@@ -18,12 +18,20 @@ class CallParams {
   /// Hyphens in header names are converted to underscores in variable names.
   final Map<String, String>? customHeaders;
 
+  /// Optional conversation ID to rejoin an existing AI assistant conversation.
+  ///
+  /// When provided, the SDK will attempt to continue the specified conversation
+  /// rather than starting a new one. This enables seamless continuation of
+  /// previous AI assistant interactions.
+  final String? conversationId;
+
   const CallParams({
     this.callerName,
     this.callerNumber,
     this.destinationNumber,
     this.clientState,
     this.customHeaders,
+    this.conversationId,
   });
 
   /// Create a copy of this CallParams with some fields replaced
@@ -33,6 +41,7 @@ class CallParams {
     String? destinationNumber,
     String? clientState,
     Map<String, String>? customHeaders,
+    String? conversationId,
   }) {
     return CallParams(
       callerName: callerName ?? this.callerName,
@@ -40,6 +49,7 @@ class CallParams {
       destinationNumber: destinationNumber ?? this.destinationNumber,
       clientState: clientState ?? this.clientState,
       customHeaders: customHeaders ?? this.customHeaders,
+      conversationId: conversationId ?? this.conversationId,
     );
   }
 
@@ -50,7 +60,8 @@ class CallParams {
         'callerNumber: $callerNumber, '
         'destinationNumber: $destinationNumber, '
         'clientState: $clientState, '
-        'customHeaders: $customHeaders'
+        'customHeaders: $customHeaders, '
+        'conversationId: $conversationId'
         ')';
   }
 
@@ -62,6 +73,7 @@ class CallParams {
         other.callerNumber == callerNumber &&
         other.destinationNumber == destinationNumber &&
         other.clientState == clientState &&
+        other.conversationId == conversationId &&
         _mapEquals(other.customHeaders, customHeaders);
   }
 
@@ -73,6 +85,7 @@ class CallParams {
       destinationNumber,
       clientState,
       customHeaders,
+      conversationId,
     );
   }
 
