@@ -30,8 +30,7 @@ class _AudioVisualizerState extends State<AudioVisualizer>
     with TickerProviderStateMixin {
   late AnimationController _updateController;
   late List<AnimationController> _barControllers;
-  late List<Animation<double>> _barAnimations;
-  
+
   final int _barCount = 12;
   final math.Random _random = math.Random();
   
@@ -42,7 +41,6 @@ class _AudioVisualizerState extends State<AudioVisualizer>
   List<int> _peakHoldCounters = [];
   
   // Audio processing state
-  double _lastAudioLevel = 0.0;
   final List<double> _audioHistory = [];
   
   // Configuration
@@ -109,12 +107,6 @@ class _AudioVisualizerState extends State<AudioVisualizer>
       );
     });
     
-    _barAnimations = _barControllers.map((controller) {
-      return Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(parent: controller, curve: Curves.easeOut),
-      );
-    }).toList();
-
     if (widget.isActive) {
       _startAnimation();
     }
