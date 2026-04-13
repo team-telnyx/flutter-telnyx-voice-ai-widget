@@ -121,7 +121,7 @@ class _ConversationOverlayState extends State<ConversationOverlay>
                 child: GestureDetector(
                   onTap: _close,
                   child: Container(
-                    color: Colors.black.withOpacity(0.5 * _fadeAnimation.value),
+                    color: Colors.black.withValues(alpha: 0.5 * _fadeAnimation.value),
                   ),
                 ),
               ),
@@ -143,7 +143,7 @@ class _ConversationOverlayState extends State<ConversationOverlay>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 20,
                           offset: const Offset(0, -5),
                         ),

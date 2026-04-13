@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'logo_icon_settings.dart';
 
 /// Configuration for icon-only mode of the TelnyxVoiceAiWidget
