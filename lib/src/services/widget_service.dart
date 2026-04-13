@@ -105,7 +105,10 @@ class WidgetService extends ChangeNotifier {
       _observeResponses();
 
       // Perform anonymous login
-      await _telnyxClient.anonymousLogin(targetId: assistantId);
+      await _telnyxClient.anonymousLogin(
+        targetId: assistantId,
+        conversationId: _callParams?.conversationId,
+      );
     } catch (e) {
       debugPrint('Error initializing widget: $e');
       _updateWidgetState(AssistantWidgetState.error);

@@ -1,3 +1,11 @@
+## [1.2.0](https://github.com/team-telnyx/flutter-telnyx-voice-ai-widget/releases/tag/1.2.0) (2026-03-08)
+
+### Enhancement
+- Bump `telnyx_webrtc` dependency from `^3.2.0` to `^4.1.0`, incorporating all SDK improvements through version 4.1.0.
+- Added `conversationId` parameter to `CallParams`, enabling users to rejoin an existing AI assistant conversation. Pass a valid conversation ID to continue a previous interaction seamlessly.
+- Automatic call quality reporting is now enabled by default (handled internally by the SDK). Reports are posted on call end to improve debugging and analytics.
+- Improved TURN/STUN server configuration with UDP support for better connectivity.
+
 ## [1.1.0](https://github.com/team-telnyx/flutter-voice-commons/releases/tag/1.0.0) (2025-11-19)
 
 ### Enhancement
